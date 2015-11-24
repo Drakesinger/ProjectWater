@@ -1,11 +1,14 @@
+/**
+ * @author Horia Mut
+ * Modified by Horia Mut on 18-Nov-15.
+ * Added utility functions.
+ */
+
 var glContext = null;
+var wrappedGLContext = null;
 var c_width = 0;
 var c_height = 0;
 var prg = null;
-
-function degToRad(degrees) {
-    return (degrees * Math.PI / 180.0);
-}
 
 /**
  * Allow to initialize Shaders.
@@ -38,6 +41,18 @@ function getShader(gl, id) {
     glContext.compileShader(shader);
 
     if (!glContext.getShaderParameter(shader, glContext.COMPILE_STATUS)) {
+        var error = glContext.getShaderInfoLog(shader);
+
+
+        var lines = error.split('\n');
+        for(var i=0; i<lines.length; i++){
+            var match = lines[i].match(/ERROR: (\d+):(\d+): (.*)/);
+            if(match){
+                var fileno = parseInt(match[1], 10)-1;
+                var lineno = parseInt(match[2], 10)-1;
+                var message = match[3]
+            }
+        }
         alert(glContext.getShaderInfoLog(shader));
         return null;
     }
@@ -262,4 +277,66 @@ function calculateTangents(vs, tc, ind) {
     }
 
     return ts;
+}
+
+/********************************************************
+ * Utility functions.
+ ***********************************************************/
+
+/**
+ *
+ * @param UniformName
+ * @param Value
+ * @constructor
+ */
+function SetShaderConstant1F(UniformName, Value)
+{
+    var Position = glContext.getUniformLocation(prg, UniformName);
+    glContext.uniform1f(Position, Value);
+}
+/**
+ *
+ * @param UniformName
+ * @param Value
+ * @constructor
+ */
+function SetShaderConstant1I(UniformName, Value)
+{
+    var Position = glContext.getUniformLocation(prg, UniformName);
+    glContext.uniform1i(Position, Value);
+}
+/**
+ *
+ * @param UniformName
+ * @param Value
+ * @constructor
+ */
+function SetShaderConstant1FV(UniformName, Value)
+{
+    var Position = glContext.getUniformLocation(prg, UniformName);
+    glContext.uniform1fv(Position, Value);
+}
+/**
+ *
+ * @param UniformName
+ * @param Value
+ * @constructor
+ */
+function SetShaderConstant2FV(UniformName, Value)
+{
+    var Position = glContext.getUniformLocation(prg, UniformName);
+    glContext.uniform2fv(Position, Value);
+}
+/**
+ *
+ * @param UniformName
+ * @param ValueX
+ * @param ValueY
+ * @param ValueZ
+ * @constructor
+ */
+function SetShaderConstant3F(UniformName, ValueX, ValueY, ValueZ)
+{
+    var Position = glContext.getUniformLocation(prg, UniformName);
+    glContext.uniform3f(Position, ValueX, ValueY, ValueZ);
 }

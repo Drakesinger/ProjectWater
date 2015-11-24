@@ -1,0 +1,503 @@
+<!doctype html>
+<html class="no-js" lang="">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="x-ua-compatible" content="ie=edge">
+        <title></title>
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+
+        <link rel="apple-touch-icon" href="apple-touch-icon.png">
+        <!-- Place favicon.ico in the root directory -->
+
+        <link rel="stylesheet" href="css/normalize.css">
+        <link rel="stylesheet" href="css/main.css">
+        <link rel="stylesheet" href="css/custom.css"/>
+        <script src="js/vendor/modernizr-2.8.3.min.js"></script>
+        <!-- WebGL related JavaScript files. -->
+        <!-- Debugging utilities. Useless really but well... -->
+        <script src="debug/webgl-debug.js"></script>
+        <script src="debug/webgl-utils.js"></script>
+
+        <!-- Math library -->
+        <script src="js/gl-matrix.js"></script>
+        <!-- WebGL tool library. Handles canvas loading, program initialization and shader compiling and attachment.-->
+        <script src="js/webglTools.js"></script>
+
+
+        <script id="shader-vs" type="x-shader/x-vertex">
+const float pi = 3.14159;
+
+uniform mat4 uMVMatrix;
+uniform mat4 uPMatrix;
+
+attribute vec3 aVertexPosition;
+attribute vec4 aColor;
+
+uniform float iGlobalTime;
+uniform float waveTime;
+uniform float waterHeight;
+uniform float amplitude[4];
+uniform float wavelength[4];
+uniform float speed[4];
+uniform float directionsX[4];
+uniform float directionsY[4];
+
+varying vec3 position;
+/*
+varying vec3 worldNormal;
+varying vec3 eyeNormal;
+*/
+varying vec4 vColor;
+
+float wave(int i, float x, float y) {
+#line 1001 100
+	float frequency = 2.0 * pi / wavelength[i];
+	float phase = speed[i] * frequency;
+	vec2 di = vec2(directionsX[i],directionsY[i]);
+	vec2 dw = vec2(x, y);
+	float theta = dot(di,dw);
+	float result = amplitude[i] * sin(theta * frequency + iGlobalTime * phase);
+	//float result = sin(dw.y);
+	return result;
+}
+
+float waveHeight(float x, float y) {
+	float height = 0.0;
+
+	for (int i = 0; i < 4; ++i){
+		height += wave(i, x, y);
+	}
+	return height;
+}
+
+void main(void) {
+	vec2 HorizontalCoordinates = aVertexPosition.xy;
+
+	vec4 vertexPos = vec4(aVertexPosition, 1.0);
+
+	// Apply a wave on Z.
+	vertexPos.z = waveHeight(vertexPos.x,vertexPos.y);
+	position = vertexPos.xyz / vertexPos.w;
+
+	vec4 transformedVertexPos = uPMatrix * uMVMatrix * vertexPos;
+
+	gl_Position = transformedVertexPos;
+
+	// Change the color to be able to see according <t></t>o depth.
+	vec3 colorComponents = aColor.xyz; //+ transformedVertexPos.z * 0.5;
+	vColor = vec4(colorComponents, 1.0);
+}
+
+
+
+
+	</script>
+
+
+        <script id="shader-fs" type="x-shader/x-fragment">
+		#ifdef GL_ES
+			precision highp float;
+		#endif
+		#extension GL_OES_standard_derivatives : enable
+
+		varying vec4	vColor;
+		uniform vec3	iResolution;
+		uniform float	iGlobalTime;
+
+		/*
+		uniform float     iChannelTime[4];
+		uniform vec4      iMouse;
+		uniform vec4      iDate;
+		uniform float     iSampleRate;
+		uniform vec3      iChannelResolution[4];
+		*/
+		// Will probably need this.
+		uniform sampler2D iChannel0;
+
+		// Prototypes.
+		void mainImage( out vec4 c,  in vec2 f );
+
+		/*
+		uniform sampler2D iChannel1;
+		void mainImage( out vec4 c,  in vec2 f );
+		uniform sampler2D iChannel2;
+		void mainImage( out vec4 c,  in vec2 f );
+		uniform sampler2D iChannel3;
+		void mainImage( out vec4 c,  in vec2 f );
+		*/
+
+		// "Seascape" by Alexander Alekseev aka TDM - 2014
+		// License Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported License.
+
+		const int NUM_STEPS = 18;
+		const float PI		= 3.1415;
+		const float EPSILON	= 1e-3;
+		float EPSILON_NRM	= 0.1 / iResolution.x;
+
+		// sea
+		const int 	ITER_GEOMETRY 	= 1;
+		const int 	ITER_FRAGMENT 	= 5;
+		const float SEA_HEIGHT 		= 0.4;
+		const float SEA_CHOPPY 		= 6.3;
+		const float SEA_SPEED 		= 1.8;
+		const float SEA_FREQ 		= 0.16;
+		const vec3 	SEA_BASE 		= vec3(0.1,0.19,0.22);
+		const vec3 	SEA_WATER_COLOR = vec3(0.8,0.9,0.6);
+		float 		SEA_TIME 		= iGlobalTime * SEA_SPEED;
+		mat2 		octave_m 		= mat2(1.6,1.2,-1.2,1.6);
+
+		// AxisAngle to Matrix
+		//http://www.euclideanspace.com/maths/geometry/rotations/conversions/angleToMatrix/
+		mat3 fromEuler(vec3 ang) {
+			vec2 a1 = vec2(sin(ang.x),cos(ang.x));
+			vec2 a2 = vec2(sin(ang.y),cos(ang.y));
+			vec2 a3 = vec2(sin(ang.z),cos(ang.z));
+			mat3 m;
+			m[0] = vec3(a1.y * a3.y + a1.x * a2.x * a3.x, a1.y * a2.x * a3.x + a3.y * a1.x, -a2.y * a3.x);
+			m[1] = vec3(-a2.y * a1.x, a1.y * a2.y, a2.x);
+			m[2] = vec3(a3.y * a1.x * a2.x + a1.y * a3.x, a1.x * a3.x - a1.y * a3.y * a2.x, a2.y * a3.y);
+			return m;
+		}
+
+		float hash( vec2 p ) {
+			float h = dot(p,vec2(127.1,311.7));
+			return fract(sin(h)*43758.5453123);
+		}
+
+		float noise( in vec2 p ) {
+			vec2 i = floor( p );
+			vec2 f = fract( p );
+			vec2 u = f*f*(3.0-2.0*f);
+			return -1.0+2.0*mix(mix( hash( i + vec2(0.0,0.0) ),
+								hash( i + vec2(1.0,0.0) ), u.x),
+								mix( hash( i + vec2(0.0,1.0) ),
+								hash( i + vec2(1.0,1.0) ), u.x), u.y);
+		}
+
+		// lighting
+		float diffuse(vec3 n,vec3 l,float p) {
+			return pow(dot(n,l) * 0.4 + 0.6,p);
+		}
+
+		float specular(vec3 n,vec3 l,vec3 e,float s) {
+			float nrm = (s + 8.0) / (3.1415 * 8.0);
+			return pow(max(dot(reflect(e,n),l),0.0),s) * nrm;
+		}
+
+		// sky
+		vec3 getSkyColor(vec3 e) {
+			e.y = max(e.y,0.0);
+			vec3 ret;
+			ret.x = pow(1.0-e.y,2.0);
+			ret.y = 1.0-e.y;
+			ret.z = 0.6+(1.0-e.y)*0.4;
+			return ret;
+		}
+
+		// sea
+		float sea_octave(vec2 uv, float choppy) {
+			uv += noise(uv);
+			vec2 wv = 1.0-abs(sin(uv));
+			vec2 swv = abs(cos(uv));
+			wv = mix(wv,swv,wv);
+			return pow(1.0-pow(wv.x * wv.y,0.65),choppy);
+		}
+
+		float map(vec3 p) {
+			float freq = SEA_FREQ;
+			float amp = SEA_HEIGHT;
+			float choppy = SEA_CHOPPY;
+			vec2 uv = p.xz; uv.x *= 0.75;
+
+			float d, h = 0.0;
+
+			for(int i = 0; i < ITER_GEOMETRY; i++) {
+				d = sea_octave((uv+SEA_TIME)*freq,choppy);
+				d += sea_octave((uv-SEA_TIME)*freq,choppy);
+				h += d * amp;
+				uv *= octave_m; freq *= 1.9; amp *= 0.22;
+				choppy = mix(choppy,1.0,0.2);
+			}
+			return p.y - h;
+		}
+
+		float map_detailed(vec3 p) {
+			float freq = SEA_FREQ;
+			float amp = SEA_HEIGHT;
+			float choppy = SEA_CHOPPY;
+			vec2 uv = p.xz; uv.x *= 0.75;
+
+			float d, h = 0.0;
+
+			for(int i = 0; i < ITER_FRAGMENT; i++) {
+				d = sea_octave((uv+SEA_TIME)*freq,choppy);
+				d += sea_octave((uv-SEA_TIME)*freq,choppy);
+				h += d * amp;
+				uv *= octave_m; freq *= 1.9; amp *= 0.22;
+				choppy = mix(choppy,1.0,0.2);
+			}
+			return p.y - h;
+		}
+
+		vec3 getSeaColor(vec3 p, vec3 n, vec3 l, vec3 eye, vec3 dist) {
+			float fresnel = 1.0 - max(dot(n,-eye),0.0);
+			fresnel = pow(fresnel,3.0) * 0.65;
+
+			vec3 reflected = getSkyColor(reflect(eye,n));
+			vec3 refracted = SEA_BASE + diffuse(n,l,80.0) * SEA_WATER_COLOR * 0.12;
+
+			vec3 color = mix(refracted,reflected,fresnel);
+
+			float atten = max(1.0 - dot(dist,dist) * 0.001, 0.0);
+			color += SEA_WATER_COLOR * (p.y - SEA_HEIGHT) * 0.18 * atten;
+
+			color += vec3(specular(n,l,eye,60.0));
+
+			return color;
+		}
+
+		// tracing
+		vec3 getNormal(vec3 p, float eps) {
+			vec3 n;
+			n.y = map_detailed(p);
+			n.x = map_detailed(vec3(p.x+eps,p.y,p.z)) - n.y;
+			n.z = map_detailed(vec3(p.x,p.y,p.z+eps)) - n.y;
+			n.y = eps;
+			return normalize(n);
+		}
+
+		float heightMapTracing(vec3 ori, vec3 dir, out vec3 p) {
+			float tm = 0.0;
+			float tx = 1000.0;
+			float hx = map(ori + dir * tx);
+			if(hx > 0.0) return tx;
+			float hm = map(ori + dir * tm);
+			float tmid = 0.0;
+			for(int i = 0; i < NUM_STEPS; i++) {
+				tmid = mix(tm,tx, hm/(hm-hx));
+				p = ori + dir * tmid;
+				float hmid = map(p);
+
+				if(hmid < 0.0) {
+					tx = tmid;
+					hx = hmid;
+				} else {
+					tm = tmid;
+					hm = hmid;
+				}
+			}
+			return tmid;
+		}
+
+		// main
+		void mainImage( out vec4 fragColor, in vec2 fragCoord ) {
+
+			// Get the UVs
+			vec2 uv = fragCoord.xy / iResolution.xy;
+			// Dunno yet.
+			//uv = uv * 2.0 - 1.0;
+			//uv.x *= iResolution.x / iResolution.y;
+
+			// Get the time.
+			float time = iGlobalTime * 0.01; //+ iMouse.x*0.01;
+
+			// ray
+			vec3 viewAngle = vec3(sin(time * 3.0) * 0.1, sin(time) * 0.2 + 0.3, time);
+			vec3 viewOrigin = vec3(0.0,2.0,3.0);
+			vec3 dir = normalize(vec3(uv.xy,-2.0)); dir.z += length(uv) * 0.15;
+			dir = normalize(dir) * fromEuler(viewAngle);
+
+			// tracing
+			vec3 p;
+			heightMapTracing(viewOrigin,dir,p);
+			vec3 dist = p - viewOrigin;
+			vec3 n = getNormal(p, dot(dist,dist) * EPSILON_NRM);
+			vec3 light = normalize(vec3(0.0,1.0,0.8));
+
+			// color
+			vec3 color = mix(
+			getSkyColor(dir),
+			getSeaColor(p,n,light,dir,dist),
+			pow(smoothstep(0.0,-0.05,dir.y),0.1));
+
+			// post
+			fragColor = vec4(pow(color,vec3(0.75)), 1.0);
+		}
+
+		// Don't touch.
+		void main( void ){
+			vec4 color = vColor;//vec4(0.0,0.0,0.0,1.0);
+			//mainImage( color, gl_FragCoord.xy );
+			//color.w = 1.0;
+			gl_FragColor = color;
+		}
+
+
+
+	</script>
+
+        <!-- My Utilities. -->
+        <script src="js/meshBuilder.js"></script>
+        <script src="js/mathTools.js"></script>
+        <script src="js/shared.js"></script>
+        <script src="js/simulator.js"></script>
+        <script src="debug/myUtilites.js"></script>
+
+    </head>
+    <body onload="initWebGL()">
+        <!--[if lt IE 8]>
+            <p class="browserupgrade">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</p>
+        <![endif]-->
+
+        <!-- Add your site or application content here -->
+
+        <article id="main-article" class="main-article container">
+            <header>
+                <nav class="nav-title">
+                    WebGL Project
+                </nav>
+                <h1 class="main-title">
+                    Water Simulation
+                </h1>
+            </header>
+
+            <div id="content" class="content">
+                <div id="menu">
+                    <button id="enable-scroll">Enable scrolling</button>
+                    <button id="disable-scroll">Disable scrolling</button>
+                    <strong id="status" class="enabled">enabled</strong>
+                </div>
+
+                <ul>
+                    <li>+ : augment subdivision</li>
+                    <li>- : decrement subdivision</li>
+                    <li>a / d : rotation around Y axis</li>
+                    <li>w / s : rotation around X axis</li>
+                </ul>
+
+                <canvas id="webgl-canvas" width="500" height="500">HTML5 is not supported</canvas>
+
+                <!-- Window and Canvas event handlers. Must be imported after the canvas is defined. -->
+                <script src="js/eventHandlers/window_events.js"></script>
+                <script src="js/eventHandlers/canvas_events.js"></script>
+
+
+                <p>
+                    <input checked="checked" type="checkbox" onclick="changeDrawMode()">Wireframe
+                </p>
+
+                <table id="waves">
+                    <tbody>
+                    <tr>
+                        <th id="enable"></th>
+                        <th id="amplitude">Amplitude</th>
+                        <th id="wavelength">Wavelength</th>
+                        <th id="directionX">Direction X</th>
+                        <th id="directionY">Direction Y</th>
+                        <th id="speed">Speed</th>
+                        <th></th>
+                    </tr>
+
+                    <tr id="wave0">
+                        <td><input checked="checked" type="checkbox"></td>
+                        <td><input value="0.5" size="6" type="text"></td>
+                        <td><input value="20" size="6" type="text"></td>
+                        <td><input value="45" size="6" type="text"></td>
+                        <td><input value="45" size="6" type="text"></td>
+                        <td><input value="0.4" size="6" type="text"></td>
+                        <th rowspan="4">Big waves</th>
+                    </tr>
+
+                    <tr id="wave1">
+                        <td><input checked="checked" type="checkbox"></td>
+                        <td><input value="0.4" size="6" type="text"></td>
+                        <td><input value="15" size="6" type="text"></td>
+                        <td><input value="120" size="6" type="text"></td>
+                        <td><input value="45" size="6" type="text"></td>
+                        <td><input value="0.8" size="6" type="text"></td>
+                    </tr>
+
+                    <tr id="wave2">
+                        <td><input checked="checked" type="checkbox"></td>
+                        <td><input value="0.2" size="6" type="text"></td>
+                        <td><input value="12" size="6" type="text"></td>
+                        <td><input value="170" size="6" type="text"></td>
+                        <td><input value="45" size="6" type="text"></td>
+                        <td><input value="0.8" size="6" type="text"></td>
+                    </tr>
+
+                    <tr id="wave3">
+                        <td><input checked="checked" type="checkbox"></td>
+                        <td><input value="0.1" size="6" type="text"></td>
+                        <td><input value="10" size="6" type="text"></td>
+                        <td><input value="65" size="6" type="text"></td>
+                        <td><input value="45" size="6" type="text"></td>
+                        <td><input value="1.0" size="6" type="text"></td>
+                    </tr>
+
+                    <tr>
+                        <td colspan="6">
+                            <hr>
+                        </td>
+                    </tr>
+
+                    <tr id="wave4">
+                        <td><input checked="checked" type="checkbox"></td>
+                        <td><input value="0.01" size="6" type="text"></td>
+                        <td><input value="1.0" size="6" type="text"></td>
+                        <td><input value="170" size="6" type="text"></td>
+                        <td><input value="45" size="6" type="text"></td>
+                        <td><input value="1.0" size="6" type="text"></td>
+                        <th rowspan="4">Small waves</th>
+                    </tr>
+
+                    <tr id="wave5">
+                        <td><input type="checkbox"></td>
+                        <td><input value="0.02" size="6" type="text"></td>
+                        <td><input value="1.5" size="6" type="text"></td>
+                        <td><input value="110" size="6" type="text"></td>
+                        <td><input value="45" size="6" type="text"></td>
+                        <td><input value="0.7" size="6" type="text"></td>
+                    </tr>
+
+                    <tr id="wave6">
+                        <td><input checked="checked" type="checkbox"></td>
+                        <td><input value="0.015" size="6" type="text"></td>
+                        <td><input value="1.2" size="6" type="text"></td>
+                        <td><input value="80" size="6" type="text"></td>
+                        <td><input value="45" size="6" type="text"></td>
+                        <td><input value="0.8" size="6" type="text"></td>
+                    </tr>
+
+                    <tr id="wave7">
+                        <td><input checked="checked" type="checkbox"></td>
+                        <td><input value="0.006" size="6" type="text"></td>
+                        <td><input value="0.8" size="6" type="text"></td>
+                        <td><input value="60" size="6" type="text"></td>
+                        <td><input value="45" size="6" type="text"></td>
+                        <td><input value="1.2" size="6" type="text"></td>
+                    </tr>
+
+                    </tbody>
+                </table>
+            </div>
+        </article>
+
+
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/{{JQUERY_VERSION}}/jquery.min.js"></script>
+        <script>window.jQuery || document.write('<script src="js/vendor/jquery-{{JQUERY_VERSION}}.min.js"><\/script>')</script>
+        <script src="js/plugins.js"></script>
+        <script src="js/main.js"></script>
+
+        <!-- Google Analytics: change UA-XXXXX-X to be your site's ID. -->
+        <script>
+            (function(b,o,i,l,e,r){b.GoogleAnalyticsObject=l;b[l]||(b[l]=
+            function(){(b[l].q=b[l].q||[]).push(arguments)});b[l].l=+new Date;
+            e=o.createElement(i);r=o.getElementsByTagName(i)[0];
+            e.src='https://www.google-analytics.com/analytics.js';
+            r.parentNode.insertBefore(e,r)}(window,document,'script','ga'));
+            ga('create','UA-XXXXX-X','auto');ga('send','pageview');
+        </script>
+    </body>
+</html>
