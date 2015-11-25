@@ -25,9 +25,9 @@ var waterColor = [0.1,0.5,1.0,1.0];
 
 // Backups
 /*
- var Amplitudes 	= [6.0,3.0,0.0,0.0];
+ var Amplitudes = [6.0,3.0,0.0,0.0];
  var WaveLengths = [30.0,55.0,12.0,10.0];
- var Speeds 		= [0.4,0.8,0.9,1.0];
+ var Speeds 	= [0.4,0.8,0.9,1.0];
  var DirectionsX = [0.5,0.4,0.1,0.9];
  var DirectionsY = [0.1,0.5,0.5,0.5];
  */
