@@ -14,3 +14,13 @@ function Normalize(v) {
 function degToRad(degrees) {
 	return (degrees * Math.PI / 180.0);
 }
+
+function createTwoDimensionalArray(lengthX,lengthY)
+{
+    var multiDimensionalArray = new Array(lengthX);
+    for (var i = 0; i < lengthX; i++)
+    {
+        multiDimensionalArray[i] = new Array(lengthY);
+    }
+return multiDimensionalArray;
+}

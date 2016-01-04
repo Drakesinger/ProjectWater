@@ -7,6 +7,12 @@ var time      = new Date().getTime() / 1000;
 
 var water = null;
 
+// Wave Data
+var gridSize     = [5, 4];
+var pressureGrid = createTwoDimensionalArray(gridSize[0],gridSize[1]);
+var minPressure = -250;
+var maxPressure = 250;
+
 // Wave parameters
 var waveTime      = 0.5;
 var waterHeight   = 0.15;
@@ -14,14 +20,14 @@ var waveWidth     = 0.7;
 var waveFrequency = 0.05;
 //var phaseConstant = 1.5;
 
-var Amplitudes  = [1.0, 0.0, 0.0, 0.0];
+var Amplitudes  = [1.0, 0.50, 0.20, 0.0];
 var WaveLengths = [4.0, 55.0, 12.0, 10.0];
 var Speeds      = [1.4, 0.8, 0.9, 1.0];
-var DirectionsX = [2.0, 0.4, 0.1, 0.9];
-var DirectionsY = [0.5, 0.5, 0.5, 0.5];
+var DirectionsX = [1.0, 1.0, 0.0, 0.0];
+var DirectionsY = [4.0, 0.0, 0.0, 0.0];
 
 // Water colors rgba
-var waterColor = [0.1,0.5,1.0,1.0];
+var waterColor = [0.1, 0.5, 1.0, 1.0];
 
 // Backups
 /*
@@ -31,6 +37,7 @@ var waterColor = [0.1,0.5,1.0,1.0];
  var DirectionsX = [0.5,0.4,0.1,0.9];
  var DirectionsY = [0.1,0.5,0.5,0.5];
  */
+
 // For sphere only.
 var vertexColor     = [];
 vertexColor.push(0.7, 0.7, 1.0, 1.0);
