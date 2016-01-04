@@ -40,10 +40,9 @@ function initBuffers()
     vertices = [];
     colors   = [];
 
-    buildBasicMesh(10, vec2.create(), 1.5, 1.5);
+    initializePressureGrid();
+    buildBasicMesh(gridSize[0], gridSize[1], vec2.create(), 1.5, 1.5);
     //buildSphere();
-    //buildQuad(-1,-1,0,2.0);
-    //buildQuad(-1,-1,0,0.5);
     //water = new WaterPlane(2.0,2.0,0.5,0.5,0.0,0.0,vertices,indices,colors);
     //water.build();
 
@@ -52,6 +51,17 @@ function initBuffers()
     vertexBuffer = getVertexBufferWithVertices(vertices);
     indexBuffer  = getIndexBufferWithIndices(indices);
     colorBuffer  = getVertexBufferWithVertices(colors);
+}
+
+function initializePressureGrid()
+{
+    for (var x = 0; x < gridSize[0]; x++)
+    {
+        for (var y = 0; y < gridSize[1]; y++)
+        {
+            pressureGrid[x][y]=0.0;
+        }
+    }
 }
 
 function varyParameters()
@@ -131,6 +141,7 @@ function drawObject()
     glContext.vertexAttribPointer(prg.colorAttribute, 4, glContext.FLOAT, false, 0, 0);
 
     glContext.bindBuffer(glContext.ELEMENT_ARRAY_BUFFER, indexBuffer);
+
     if (wireframe)
     {
         glContext.drawElements(glContext.LINE_STRIP, indices.length, glContext.UNSIGNED_SHORT, 0);

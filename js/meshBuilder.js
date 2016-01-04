@@ -14,25 +14,28 @@ function buildTriangleMesh(x, y, offset, distance) {
 	vertices.push(x, y, 0.0); 							// A 0
 	vertices.push(x + distance, y, 0.0); 				// B 1
 	vertices.push(x + distance, y + distance, 0.0); 	// C 2
-	
+
 	colors.push(0.1, 0.1, 0.1, 1.0);
 	colors.push(0.2, 0.7, 1.0, 1.0);
 	colors.push(0.7, 0.1, 1.0, 1.0);
 }
 
+
 /**
  *
- * @param {int}     nrOfQuads
+ * @param {int}     nrOfQuadsX
+ * @param {int}     nrOfQuadsY
  * @param {vec2}    origin
  * @param {float}   quadLength
  * @param {float}   quadWidth
  */
-function buildBasicMesh(nrOfQuads,origin,quadLength,quadWidth) {
-	var distance = ((nrOfQuads / 2.0)*quadLength);
+function buildBasicMesh(nrOfQuadsX,nrOfQuadsY,origin,quadLength,quadWidth) {
+	var distanceX = ((nrOfQuadsX / 2.0)*quadLength);
+    var distanceY = ((nrOfQuadsY / 2.0)*quadLength);
 	var x = origin[0];
 	var y = origin[1];
-	for (var i = x - distance; i < x + distance; i += quadLength) {
-		for (var j = y - distance; j < y + distance; j += quadWidth) {
+	for (var i = x - distanceX; i < x + distanceX; i += quadLength) {
+		for (var j = y - distanceY; j < y + distanceY; j += quadWidth) {
 			//console.log("Gonna build at:[" + i + "," + j + "] of length: " + quadLength);
 			buildQuad(i, j, 0, quadWidth);
 		}
@@ -46,7 +49,7 @@ function buildQuad(x, y, offset, distance) {
 		baseIndex = 0;
 	}
 
-	buildQuadMesh(x, y, offset, distance);	
+	buildQuadMesh(x, y, offset, distance);
 	// 2 Triangles, 6 Indices
 	addTriangle(baseIndex, baseIndex + 1, baseIndex + 2);
 	addTriangle(baseIndex, baseIndex + 2 ,baseIndex + 3);
@@ -61,19 +64,13 @@ function buildQuadMesh(x, y, offset, distance) {
 	vertices.push(x + distance, y, 0.0); 				// B 1
 	vertices.push(x + distance, y + distance, 0.0); 	// C 2
 	vertices.push(x, y + distance, 0.0); 				// D 3
-	
+
 	// Now the colors. Same as before. no change.
 	colors.push(waterColor[0], waterColor[1], waterColor[2], waterColor[3]);
 	colors.push(waterColor[0], waterColor[1], waterColor[2], waterColor[3]);
 	colors.push(waterColor[0], waterColor[1], waterColor[2], waterColor[3]);
 	colors.push(waterColor[0], waterColor[1], waterColor[2], waterColor[3]);
-	/* // Old way.
-	colors.push(0.2, 0.7, 1.0, 1.0);
-	colors.push(0.7, 0.1, 1.0, 1.0);
-	colors.push(1.0, 0.1, 0.5, 1.0);
-	*/
 }
-
 
 
 function buildSphere() {
