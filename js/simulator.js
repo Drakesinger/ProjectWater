@@ -4,8 +4,17 @@ function initShaderParameters(prg)
     glContext.enableVertexAttribArray(prg.vertexPositionAttribute);
     prg.colorAttribute          = glContext.getAttribLocation(prg, "aColor");
     glContext.enableVertexAttribArray(prg.colorAttribute);
-    prg.pMatrixUniform          = glContext.getUniformLocation(prg, 'uPMatrix');
-    prg.mvMatrixUniform         = glContext.getUniformLocation(prg, 'uMVMatrix');
+
+    // Add the texture coordinate attribute
+    prg.textureCoordsAttribute = glContext.getAttribLocation(prg, "aTextureCoord");
+    glContext.enableVertexAttribArray(prg.textureCoordsAttribute);
+
+    // Matrix uniforms.
+    prg.pMatrixUniform  = glContext.getUniformLocation(prg, 'uPMatrix');
+    prg.mvMatrixUniform = glContext.getUniformLocation(prg, 'uMVMatrix');
+
+    // Texture uniform.
+    prg.colorTextureUniform = glContext.getUniformLocation(prg, "uColorTexture");
 
     // Wave time.
     prg.waterHeight = glContext.getUniformLocation(prg, 'waterHeight');
@@ -17,6 +26,9 @@ function initShaderParameters(prg)
     prg.directionsY = glContext.getUniformLocation(prg, 'directionsY');
     prg.iGlobalTime = glContext.getUniformLocation(prg, 'iGlobalTime');
 
+    // Pressure Grid.
+    // TODO add the pressionGrid under texture form.
+    //prg.pressureGrid = glContext.getUniformLocation(prg,'uPressionGrid');
     // No good.
     //SetShaderConstants('waterProgram');
 }
@@ -40,17 +52,12 @@ function initBuffers()
     vertices = [];
     colors   = [];
 
-    initializePressureGrid();
     buildBasicMesh(gridSize[0], gridSize[1], vec2.create(), 1.5, 1.5);
-    //buildSphere();
-    //water = new WaterPlane(2.0,2.0,0.5,0.5,0.0,0.0,vertices,indices,colors);
-    //water.build();
 
-    //console.log('Coord: ' + vertices.length + ', ' + 'Indices: ' + indices.length + ', ' + 'ColorRGB: ' + colors.length);
-
-    vertexBuffer = getVertexBufferWithVertices(vertices);
-    indexBuffer  = getIndexBufferWithIndices(indices);
-    colorBuffer  = getVertexBufferWithVertices(colors);
+    vertexBuffer     = getVertexBufferWithVertices(vertices);
+    indexBuffer      = getIndexBufferWithIndices(indices);
+    colorBuffer      = getVertexBufferWithVertices(colors);
+    textCoordsBuffer = getArrayBufferWithArray(textCoords);
 }
 
 function initializePressureGrid()
@@ -59,9 +66,47 @@ function initializePressureGrid()
     {
         for (var y = 0; y < gridSize[1]; y++)
         {
-            pressureGrid[x][y]=0.0;
+            pressureGrid[x][y] = 0.0;
+            textCoords.push(0.0);
+            textCoordsIndices.push([x, y]);
         }
     }
+    console.log(textCoords);
+    console.log(textCoordsIndices);
+}
+
+/**
+ * TODO - Find out how to bind the two-dimensional array with the texture.
+ */
+function initializePressureBuffer()
+{
+    /*
+     rttFramebuffer[index]        = glContext.createFramebuffer();
+     glContext.bindFramebuffer(glContext.FRAMEBUFFER, rttFramebuffer[index]);
+     rttFramebuffer[index].width  = textureSize;
+     rttFramebuffer[index].height = textureSize;
+     rttTexture[index]            = glContext.createTexture();
+     glContext.bindTexture(glContext.TEXTURE_2D, rttTexture[index]);
+     glContext.texParameteri(glContext.TEXTURE_2D, glContext.TEXTURE_MIN_FILTER, glContext.NEAREST);
+     glContext.texParameteri(glContext.TEXTURE_2D, glContext.TEXTURE_MAG_FILTER, glContext.NEAREST);
+     glContext.texImage2D(
+     glContext.TEXTURE_2D, 0, glContext.RGBA, rttFramebuffer[index].width,
+     rttFramebuffer[index].height, 0, glContext.RGBA, glContext.UNSIGNED_BYTE, null);
+     var renderbuffer             = glContext.createRenderbuffer();
+     glContext.bindRenderbuffer(glContext.RENDERBUFFER, renderbuffer);
+     glContext.renderbufferStorage(
+     glContext.RENDERBUFFER, glContext.DEPTH_COMPONENT16,
+     rttFramebuffer[index].width, rttFramebuffer[index].height);
+     glContext.framebufferTexture2D(
+     glContext.FRAMEBUFFER, glContext.COLOR_ATTACHMENT0,
+     glContext.TEXTURE_2D, rttTexture[index], 0);
+     glContext.framebufferRenderbuffer(
+     glContext.FRAMEBUFFER, glContext.DEPTH_ATTACHMENT,
+     glContext.RENDERBUFFER, renderbuffer);
+     glContext.bindTexture(glContext.TEXTURE_2D, null);
+     glContext.bindRenderbuffer(glContext.RENDERBUFFER, null);
+     glContext.bindFramebuffer(glContext.FRAMEBUFFER, null);
+     */
 }
 
 function varyParameters()
@@ -123,6 +168,8 @@ function setupUniforms()
     glContext.uniformMatrix4fv(prg.pMatrixUniform, false, pMatrix);
     glContext.uniformMatrix4fv(prg.mvMatrixUniform, false, mvMatrix);
 
+    glContext.uniform1i(prg.colorTextureUniform, 0);
+
     glContext.uniform1f(prg.waterHeight, waterHeight);
     glContext.uniform1fv(prg.amplitude, Amplitudes);
     glContext.uniform1fv(prg.wavelength, WaveLengths);
@@ -139,6 +186,16 @@ function drawObject()
 
     glContext.bindBuffer(glContext.ARRAY_BUFFER, colorBuffer);
     glContext.vertexAttribPointer(prg.colorAttribute, 4, glContext.FLOAT, false, 0, 0);
+
+    // Bind the texture buffer.
+    glContext.bindBuffer(glContext.ARRAY_BUFFER, textCoordsBuffer);
+    glContext.vertexAttribPointer(prg.textureCoordsAttribute, 2, glContext.FLOAT, false, 0, 0);
+
+    // Activate the texture.
+    glContext.activeTexture(glContext.TEXTURE0);
+
+    // Bind the texture.
+    //glContext.bindTexture(glContext.TEXTURE_2D, texColorTab[currentTexID-1]);
 
     glContext.bindBuffer(glContext.ELEMENT_ARRAY_BUFFER, indexBuffer);
 
@@ -158,6 +215,8 @@ function initWebGL()
     var originalGlContext = getGLContext('webgl-canvas');
     glContext             = WebGLDebugUtils.makeDebugContext(originalGlContext);
 
+    initializePressureGrid();
+    initializePressureBuffer();
     initProgram();
     initBuffers();
     console.table(getProgramInfo(glContext, prg).uniforms);
