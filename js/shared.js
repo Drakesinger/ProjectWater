@@ -9,9 +9,9 @@ var water = null;
 
 // Wave Data
 var gridSize     = [5, 4];
-var pressureGrid = createTwoDimensionalArray(gridSize[0],gridSize[1]);
-var minPressure = -250;
-var maxPressure = 250;
+var pressureGrid = createTwoDimensionalArray(gridSize[0], gridSize[1]);
+var minPressure  = -250;
+var maxPressure  = 250;
 
 // Wave parameters
 var waveTime      = 0.5;
@@ -20,7 +20,8 @@ var waveWidth     = 0.7;
 var waveFrequency = 0.05;
 //var phaseConstant = 1.5;
 
-var Amplitudes  = [1.0, 0.50, 0.20, 0.0];
+//var Amplitudes  = [1.0, 0.50, 0.20, 0.0];
+var Amplitudes  = [0.0, 0.0, 0.0, 0.0];
 var WaveLengths = [4.0, 55.0, 12.0, 10.0];
 var Speeds      = [1.4, 0.8, 0.9, 1.0];
 var DirectionsX = [1.0, 1.0, 0.0, 0.0];
@@ -44,12 +45,18 @@ vertexColor.push(0.7, 0.7, 1.0, 1.0);
 var sphereDivisions = 0;
 var indexCnt        = 0;
 
-var vertexBuffer = null;
-var indexBuffer  = null;
-var colorBuffer  = null;
-var indices      = [];
-var vertices     = [];
-var colors       = [];
+// Buffers.
+var vertexBuffer     = null;
+var indexBuffer      = null;
+var colorBuffer      = null;
+var textCoordsBuffer = null;
+
+// Mesh data.
+var indices    = [];
+var vertices   = [];
+var colors     = [];
+var textCoords = [];
+var textCoordsIndices = []
 
 // Camera and Projection Matrices
 var mvMatrix = mat4.create();
