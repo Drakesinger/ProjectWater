@@ -34,6 +34,7 @@
 
             attribute vec3 aVertexPosition;
             attribute vec4 aColor;
+            attribute vec2 aTextureCoord;
 
             uniform float iGlobalTime;
             uniform float waveTime;
@@ -50,6 +51,7 @@
             varying vec3 eyeNormal;
             */
             varying vec4 vColor;
+            varying vec2 vTextureCoord;
 
             float wave(int i, float x, float y) {
             #line 1001 100
@@ -73,6 +75,9 @@
             }
 
             void main(void) {
+                // Send the texture coordinate to the fragement shader.
+                vTextureCoord = aTextureCoord;
+
                 vec2 HorizontalCoordinates = aVertexPosition.xy;
 
                 vec4 vertexPos = vec4(aVertexPosition, 1.0);
@@ -98,8 +103,11 @@
             #extension GL_OES_standard_derivatives : enable
 
             varying vec4	vColor;
+            varying vec2    vTextureCoord;
             uniform vec3	iResolution;
             uniform float	iGlobalTime;
+
+            uniform sampler2D uColorTexture;
 
             /*
             uniform float     iChannelTime[4];
@@ -109,7 +117,7 @@
             uniform vec3      iChannelResolution[4];
             */
             // Will probably need this.
-            uniform sampler2D iChannel0;
+            //uniform sampler2D iChannel0;
 
             // Prototypes.
             void mainImage( out vec4 c,  in vec2 f );
@@ -324,9 +332,12 @@
             // Don't touch.
             void main( void ){
                 vec4 color = vColor;//vec4(0.0,0.0,0.0,1.0);
+                vec2 mapCoord = vec2(vTextureCoord.s, vTextureCoord.t);
+
                 //mainImage( color, gl_FragCoord.xy );
                 //color.w = 1.0;
-                gl_FragColor = color;
+                //gl_FragColor = color;
+                gl_FragColor = texture2D(uColorTexture, vec2(vTextureCoord.s, vTextureCoord.t));
             }
 	</script>
 
@@ -547,7 +558,7 @@
                     <input checked="checked" type="checkbox" onclick="changeDrawMode()">Wireframe
                 </p>
 
-                <table id="waves">
+                <table id="waves" class="hidden">
                     <tbody>
                     <tr>
                         <th id="enable"></th>

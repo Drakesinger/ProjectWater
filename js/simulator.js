@@ -26,8 +26,6 @@ function initShaderParameters(prg)
     prg.directionsY = glContext.getUniformLocation(prg, 'directionsY');
     prg.iGlobalTime = glContext.getUniformLocation(prg, 'iGlobalTime');
 
-    // Pressure Grid.
-    // TODO add the pressionGrid under texture form.
     //prg.pressureGrid = glContext.getUniformLocation(prg,'uPressionGrid');
     // No good.
     //SetShaderConstants('waterProgram');
@@ -48,31 +46,44 @@ function SetShaderConstants(programName)
 
 function initBuffers()
 {
-    indices  = [];
-    vertices = [];
-    colors   = [];
+    indices        = [];
+    vertices       = [];
+    colors         = [];
+    var meshBounds = [];
 
-    buildBasicMesh(gridSize[0], gridSize[1], vec2.create(), 1.5, 1.5);
+    buildBasicMesh(meshSize[0], meshSize[1], vec2.create(), quadSize[0], quadSize[1], meshBounds);
+
+    initializePressureGrid(meshBounds);
+    initializeTextureCoordinates(meshBounds);
 
     vertexBuffer     = getVertexBufferWithVertices(vertices);
     indexBuffer      = getIndexBufferWithIndices(indices);
     colorBuffer      = getVertexBufferWithVertices(colors);
     textCoordsBuffer = getArrayBufferWithArray(textCoords);
 }
+// TODO - Fix the problem here.
+function initializeTextureCoordinates(meshBounds)
+{
+    // Define the UVs of the texture.
+    var vertexSE = meshBounds[0];
+    textCoords.push(0.0, 0.0);
+    var vertexSW = meshBounds[1];
+    textCoords.push(0.0, 1.0);
+    var vertexNW = meshBounds[2];
+    textCoords.push(1.0, 1.0);
+    var vertexNE = meshBounds[3];
+    textCoords.push(1.0, 0.0);
+}
 
-function initializePressureGrid()
+function initializePressureGrid(meshBounds)
 {
     for (var x = 0; x < gridSize[0]; x++)
     {
         for (var y = 0; y < gridSize[1]; y++)
         {
             pressureGrid[x][y] = 0.0;
-            textCoords.push(0.0);
-            textCoordsIndices.push([x, y]);
         }
     }
-    console.log(textCoords);
-    console.log(textCoordsIndices);
 }
 
 /**
@@ -124,7 +135,7 @@ function drawScene()
 
     //varyParameters();
 
-    glContext.clearColor(0.1, 0.1, 0.1, 1.0);
+    glContext.clearColor(0.9, 0.9, 0.9, 1.0);
     glContext.enable(glContext.DEPTH_TEST);
     glContext.clear(glContext.COLOR_BUFFER_BIT | glContext.DEPTH_BUFFER_BIT);
     glContext.viewport(0, 0, c_width, c_height);
@@ -192,7 +203,7 @@ function drawObject()
     glContext.vertexAttribPointer(prg.textureCoordsAttribute, 2, glContext.FLOAT, false, 0, 0);
 
     // Activate the texture.
-    glContext.activeTexture(glContext.TEXTURE0);
+    //glContext.activeTexture(glContext.TEXTURE0);
 
     // Bind the texture.
     //glContext.bindTexture(glContext.TEXTURE_2D, texColorTab[currentTexID-1]);
@@ -215,8 +226,8 @@ function initWebGL()
     var originalGlContext = getGLContext('webgl-canvas');
     glContext             = WebGLDebugUtils.makeDebugContext(originalGlContext);
 
-    initializePressureGrid();
-    initializePressureBuffer();
+    //initializePressureGrid();
+    //initializePressureBuffer();
     initProgram();
     initBuffers();
     console.table(getProgramInfo(glContext, prg).uniforms);
@@ -234,4 +245,9 @@ function setVectorZ(z)
     {
         vZ -= z;
     }
+}
+
+function changePressure(pX, pY)
+{
+    console.log("Can i do this? [" + pX + "," + pY + "]");
 }

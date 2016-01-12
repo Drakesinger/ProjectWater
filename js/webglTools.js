@@ -170,9 +170,13 @@ function getIndexBufferWithIndices(indices) {
     return iBuffer;
 }
 
-
+/**
+ * The following code snippet creates an array buffer and binds the array values to it.
+ * @param values
+ * @returns {WebGLBuffer}
+ */
 function getArrayBufferWithArray(values) {
-    //The following code snippet creates an array buffer and binds the array values to it
+
     var vBuffer = glContext.createBuffer();
     glContext.bindBuffer(glContext.ARRAY_BUFFER, vBuffer);
     glContext.bufferData(glContext.ARRAY_BUFFER, new Float32Array(values), glContext.STATIC_DRAW);

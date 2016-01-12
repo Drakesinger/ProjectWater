@@ -8,7 +8,10 @@ var time      = new Date().getTime() / 1000;
 var water = null;
 
 // Wave Data
-var gridSize     = [5, 4];
+var meshSize = [1, 1];
+var gridSize = [1, 1];
+var quadSize = [10, 10];
+
 var pressureGrid = createTwoDimensionalArray(gridSize[0], gridSize[1]);
 var minPressure  = -250;
 var maxPressure  = 250;
@@ -52,10 +55,10 @@ var colorBuffer      = null;
 var textCoordsBuffer = null;
 
 // Mesh data.
-var indices    = [];
-var vertices   = [];
-var colors     = [];
-var textCoords = [];
+var indices           = [];
+var vertices          = [];
+var colors            = [];
+var textCoords        = [];
 var textCoordsIndices = []
 
 // Camera and Projection Matrices
