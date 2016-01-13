@@ -65,6 +65,7 @@ function handleMouseClick(event)
 	var pY = (myCanvas.height / 2.0 - mousePos.y) / myCanvas.height * 2.0;
 	var message = 'point: ' + pX + ',' + pY;
 	console.log(message);
+    changePressure(pX,pY);
 	//setVectorXY(pX, pY);
 	//addPointOnScene(pX, pY);
 }
