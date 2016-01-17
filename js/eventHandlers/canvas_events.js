@@ -81,6 +81,9 @@ function getMousePosition(myCanvas, event) {
 // in the next function 'currentRy' is usefull for the exercice 8-9
 var currentRy = 0; //keeps the current rotation on y, used to keep the billboards orientation
 
+/**
+ * Updated rotation using Quaternions function.
+ */
 function rotateModelViewMatrixUsingQuaternion() {
 
 	//use quaternion rotations for the rotation of the object with the mouse

@@ -92,3 +92,18 @@ function checkKey(ev) {
             break;
     }
 }
+
+function setWave(index)
+{
+    var amplitude = document.getElementById("amplitude"+index).getAttribute("value");
+    var wavelength = document.getElementById("wavelength"+index).getAttribute("value");
+    var directionX = document.getElementById("directionX"+index).getAttribute("value");
+    var directionY = document.getElementById("directionY"+index).getAttribute("value");
+    var speed = document.getElementById("speed"+index).getAttribute("value");
+
+    Amplitudes[index] = amplitude;
+    WaveLengths[index] = wavelength;
+    Speeds[index] = speed;
+    DirectionsX[index] = directionX;
+    DirectionsY[index] = directionY;
+}

@@ -29,39 +29,90 @@
         <script id="shader-vs" type="x-shader/x-vertex">
             const float pi = 3.14159;
 
+            // The matrices.
             uniform mat4 uMVMatrix;
             uniform mat4 uPMatrix;
 
+            // The canvas resolution.
+            uniform vec3 iResolution;
+
+            // The vertex attributes.
             attribute vec3 aVertexPosition;
             attribute vec4 aColor;
             attribute vec2 aTextureCoord;
 
+            // The light position.
+            uniform vec3 uLightPosition;
+
+            // The wave uniforms.
             uniform float iGlobalTime;
             uniform float waveTime;
             uniform float waterHeight;
+            uniform float Q; // Wave Steepness.
             uniform float amplitude[4];
             uniform float wavelength[4];
             uniform float speed[4];
             uniform float directionsX[4];
             uniform float directionsY[4];
 
+            // The data to pass to the fragement shader.
             varying vec3 position;
+            varying vec3 vLightPosition;
+
             /*
             varying vec3 worldNormal;
             varying vec3 eyeNormal;
             */
+
             varying vec4 vColor;
             varying vec2 vTextureCoord;
 
-            float wave(int i, float x, float y) {
-            #line 1001 100
+
+            float gerstnerWave(int i, out float x, out float y)
+            {
                 float frequency = 2.0 * pi / wavelength[i];
                 float phase = speed[i] * frequency;
                 vec2 di = vec2(directionsX[i],directionsY[i]);
                 vec2 dw = vec2(x, y);
                 float theta = dot(di,dw);
+
+                float result = theta * frequency + iGlobalTime * phase;
+                float Qi = Q;
+                if(amplitude[i] != 0.0)
+                {
+                    float Qi = Q / (frequency * amplitude[i] * float(i+1));
+                }
+
+                x += Qi * amplitude[i] * di.x * cos(result);
+                y += Qi * amplitude[i] * di.y * cos(result);
+                float t = amplitude[i] * sin(result);
+                return t;
+            }
+
+             void gerstnerWavePositionFaster(out float x, out float y,out float z)
+            {
+                float sumX = x;
+                float sumY = y;
+                float sumT = z; // Z-axis
+
+                for (int i = 0; i < 4; ++i){
+                    sumT += gerstnerWave(i,sumX,sumY);
+                }
+
+                x = sumX;
+                y = sumY;
+                z = sumT;
+            }
+
+            float wave(int i, float x, float y)
+            {
+                float frequency = 2.0 * pi / wavelength[i];
+                float phase = speed[i] * frequency;
+                vec2 di = vec2(directionsX[i],directionsY[i]);
+                vec2 dw = vec2(x, y);
+                float theta = dot(di,dw);
+
                 float result = amplitude[i] * sin(theta * frequency + iGlobalTime * phase);
-                //float result = sin(dw.y);
                 return result;
             }
 
@@ -75,6 +126,9 @@
             }
 
             void main(void) {
+
+                gl_PointSize = 100.0;
+
                 // Send the texture coordinate to the fragement shader.
                 vTextureCoord = aTextureCoord;
 
@@ -82,16 +136,20 @@
 
                 vec4 vertexPos = vec4(aVertexPosition, 1.0);
 
+                // Apply a Gerstner Wave.
+                gerstnerWavePositionFaster(vertexPos.x,vertexPos.y,vertexPos.z);
+
                 // Apply a wave on Z.
-                vertexPos.z = waveHeight(vertexPos.x,vertexPos.y);
+                //vertexPos.z = waveHeight(vertexPos.x,vertexPos.y);
                 position = vertexPos.xyz / vertexPos.w;
 
                 vec4 transformedVertexPos = uPMatrix * uMVMatrix * vertexPos;
 
+                vLightPosition = (uMVMatrix * vec4(uLightPosition, 1.0)).xyz;
                 gl_Position = transformedVertexPos;
 
-                // Change the color to be able to see according <t></t>o depth.
-                vec3 colorComponents = aColor.xyz; //+ transformedVertexPos.z * 0.5;
+                // Change the color to be able to see according to depth.
+                vec3 colorComponents = aColor.xyz + transformedVertexPos.z * 0.15;
                 vColor = vec4(colorComponents, 1.0);
             }
 	</script>
@@ -102,34 +160,19 @@
             #endif
             #extension GL_OES_standard_derivatives : enable
 
+            varying vec3    vLightPosition;
             varying vec4	vColor;
             varying vec2    vTextureCoord;
+
             uniform vec3	iResolution;
             uniform float	iGlobalTime;
 
+            uniform vec3    uLightPosition;
+
             uniform sampler2D uColorTexture;
 
-            /*
-            uniform float     iChannelTime[4];
-            uniform vec4      iMouse;
-            uniform vec4      iDate;
-            uniform float     iSampleRate;
-            uniform vec3      iChannelResolution[4];
-            */
-            // Will probably need this.
-            //uniform sampler2D iChannel0;
-
             // Prototypes.
-            void mainImage( out vec4 c,  in vec2 f );
-
-            /*
-            uniform sampler2D iChannel1;
-            void mainImage( out vec4 c,  in vec2 f );
-            uniform sampler2D iChannel2;
-            void mainImage( out vec4 c,  in vec2 f );
-            uniform sampler2D iChannel3;
-            void mainImage( out vec4 c,  in vec2 f );
-            */
+            //void mainImage( out vec4 c,  in vec2 f );
 
             // "Seascape" by Alexander Alekseev aka TDM - 2014
             // License Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported License.
@@ -199,28 +242,87 @@
                 return ret;
             }
 
-            // sea
+            /** Sea Octave
+            * TLDR: It is this function that passes a low frequency random terrain through a
+            * 2D symmetric wave function that looks like this:
+            * http://www.wolframalpha.com/input/?i=%7B1-%7B%7B%7BAbs%5BCos%5B0.16x%5D%5D+%2B+Abs%5BCos%5B0.16x%5D%5D+%28%281.+-+Abs%5BSin%5B0.16x%5D%5D%29+-+Abs%5BCos%5B0.16x%5D%5D%29%7D+*+%7BAbs%5BCos%5B0.16y%5D%5D+%2B+Abs%5BCos%5B0.16y%5D%5D+%28%281.+-+Abs%5BSin%5B0.16y%5D%5D%29+-+Abs%5BCos%5B0.16y%5D%5D%29%7D%7D%5E0.65%7D%7D%5E4+from+-20+to+20
+            *
+            * The <choppy> parameter affects the wave shape.
+            */
             float sea_octave(vec2 uv, float choppy) {
+                // Add the smoothed 2D terrain / wave function to the input coordinates
+                // which are going to be our X and Z world coordinates.  It may be unclear why we are doing this.
+                // This value is about to be passed through a wave function.  So we have a smoothed psuedo random height
+                // field being added to our (X, Z) coordinates, and then fed through yet another wav function below.
                 uv += noise(uv);
+
+                // Note that you could simply return noise(uv) here and it would take on the characteristics of our
+                // noise interpolation function u and would be a reasonable heightmap for terrain.
+                // However, that isn't the shape we want in the end for an ocean with waves, so it will be fed through
+                // a more wave like function.  Note that although both x and y channels of <uv> have the same value added, there is a
+                // symmetry break because <uv>.x and <uv>.y will typically be different values.
+
+                // This is a wave function with pointy peaks and curved troughs:
+                // http://www.wolframalpha.com/input/?i=1-abs%28cos%28x%29%29%3B
                 vec2 wv = 1.0-abs(sin(uv));
+
+                // This is a wave function with curved peaks and pointy troughs:
+                // http://www.wolframalpha.com/input/?i=abs%28cos%28x%29%29%3B
                 vec2 swv = abs(cos(uv));
+
+                // Blending both wave functions gets us a new, cooler wave function (output between 0 and 1):
+                // http://www.wolframalpha.com/input/?i=abs%28cos%28x%29%29+%2B+abs%28cos%28x%29%29+*+%28%281.0-abs%28sin%28x%29%29%29+-+abs%28cos%28x%29%29%29
                 wv = mix(wv,swv,wv);
+
+                // Finally, compose both of the wave functions for X and Y channels into a final
+                // 1D height value, shaping it a bit along the way.
+
+                // First, there is the composition (multiplication) of
+                // the wave functions: wv.x * wv.y.
+                // Wolfram will give us a cute 2D height graph for this:
+                // http://www.wolframalpha.com/input/?i=%7BAbs%5BCos%5Bx%5D%5D+%2B+Abs%5BCos%5Bx%5D%5D+%28%281.+-+Abs%5BSin%5Bx%5D%5D%29+-+Abs%5BCos%5Bx%5D%5D%29%7D+*+%7BAbs%5BCos%5By%5D%5D+%2B+Abs%5BCos%5By%5D%5D+%28%281.+-+Abs%5BSin%5By%5D%5D%29+-+Abs%5BCos%5By%5D%5D%29%7D
+                //
+                // Next, we reshape the 2D wave function by exponentiation: (wv.x * wv.y)^0.65.
+                // This slightly rounds the base of the wave:
+                // http://www.wolframalpha.com/input/?i=%7B%7BAbs%5BCos%5Bx%5D%5D+%2B+Abs%5BCos%5Bx%5D%5D+%28%281.+-+Abs%5BSin%5Bx%5D%5D%29+-+Abs%5BCos%5Bx%5D%5D%29%7D+*+%7BAbs%5BCos%5By%5D%5D+%2B+Abs%5BCos%5By%5D%5D+%28%281.+-+Abs%5BSin%5By%5D%5D%29+-+Abs%5BCos%5By%5D%5D%29%7D%7D%5E0.65
+                //
+                // One last final transform (with choppy = 4) results in this which resembles a recognizable ocean wave shape in 2D:
+                // http://www.wolframalpha.com/input/?i=%7B1-%7B%7B%7BAbs%5BCos%5Bx%5D%5D+%2B+Abs%5BCos%5Bx%5D%5D+%28%281.+-+Abs%5BSin%5Bx%5D%5D%29+-+Abs%5BCos%5Bx%5D%5D%29%7D+*+%7BAbs%5BCos%5By%5D%5D+%2B+Abs%5BCos%5By%5D%5D+%28%281.+-+Abs%5BSin%5By%5D%5D%29+-+Abs%5BCos%5By%5D%5D%29%7D%7D%5E0.65%7D%7D%5E4
+                //
+                // Note that this function is called with a specific frequency multiplier which will stretch out the wave.
+                //
+                // Here is the graph with the base frequency used by map and map_detailed (0.16):
+                // http://www.wolframalpha.com/input/?i=%7B1-%7B%7B%7BAbs%5BCos%5B0.16x%5D%5D+%2B+Abs%5BCos%5B0.16x%5D%5D+%28%281.+-+Abs%5BSin%5B0.16x%5D%5D%29+-+Abs%5BCos%5B0.16x%5D%5D%29%7D+*+%7BAbs%5BCos%5B0.16y%5D%5D+%2B+Abs%5BCos%5B0.16y%5D%5D+%28%281.+-+Abs%5BSin%5B0.16y%5D%5D%29+-+Abs%5BCos%5B0.16y%5D%5D%29%7D%7D%5E0.65%7D%7D%5E4+from+-20+to+20
                 return pow(1.0-pow(wv.x * wv.y,0.65),choppy);
             }
 
+            /**
+            * Compute the distance along Y axis of a point to the surface of the ocean
+            * using a low(er) resolution ocean height composition function (less iterations).
+            */
             float map(vec3 p) {
                 float freq = SEA_FREQ;
                 float amp = SEA_HEIGHT;
                 float choppy = SEA_CHOPPY;
-                vec2 uv = p.xz; uv.x *= 0.75;
+                vec2 uv = p.xz;
+                uv.x *= 0.75;
 
+                /*
+                * Compose our wave noise generation ("sea_octave") with different frequencies
+                * and offsets to achieve a final height map that looks like an ocean.  Likely lots
+                * of black magic / trial and error here to get it to look right.
+                * Each sea_octave has this shape:
+                * http://www.wolframalpha.com/input/?i=%7B1-%7B%7B%7BAbs%5BCos%5B0.16x%5D%5D+%2B+Abs%5BCos%5B0.16x%5D%5D+%28%281.+-+Abs%5BSin%5B0.16x%5D%5D%29+-+Abs%5BCos%5B0.16x%5D%5D%29%7D+*+%7BAbs%5BCos%5B0.16y%5D%5D+%2B+Abs%5BCos%5B0.16y%5D%5D+%28%281.+-+Abs%5BSin%5B0.16y%5D%5D%29+-+Abs%5BCos%5B0.16y%5D%5D%29%7D%7D%5E0.65%7D%7D%5E4+from+-20+to+20
+                */
                 float d, h = 0.0;
 
                 for(int i = 0; i < ITER_GEOMETRY; i++) {
                     d = sea_octave((uv+SEA_TIME)*freq,choppy);
                     d += sea_octave((uv-SEA_TIME)*freq,choppy);
                     h += d * amp;
-                    uv *= octave_m; freq *= 1.9; amp *= 0.22;
+                    uv *= octave_m;
+                    freq *= 1.9;
+                    amp *= 0.22;
                     choppy = mix(choppy,1.0,0.2);
                 }
                 return p.y - h;
@@ -230,7 +332,8 @@
                 float freq = SEA_FREQ;
                 float amp = SEA_HEIGHT;
                 float choppy = SEA_CHOPPY;
-                vec2 uv = p.xz; uv.x *= 0.75;
+                vec2 uv = p.xz;
+                uv.x *= 0.75;
 
                 float d, h = 0.0;
 
@@ -238,7 +341,9 @@
                     d = sea_octave((uv+SEA_TIME)*freq,choppy);
                     d += sea_octave((uv-SEA_TIME)*freq,choppy);
                     h += d * amp;
-                    uv *= octave_m; freq *= 1.9; amp *= 0.22;
+                    uv *= octave_m;
+                    freq *= 1.9;
+                    amp *= 0.22;
                     choppy = mix(choppy,1.0,0.2);
                 }
                 return p.y - h;
@@ -271,13 +376,25 @@
                 return normalize(n);
             }
 
+            // bteitler: Find out where a ray intersects the current ocean
             float heightMapTracing(vec3 ori, vec3 dir, out vec3 p) {
                 float tm = 0.0;
-                float tx = 1000.0;
+                float tx = 1000.0; // Light is far away.
+
+                // Height, relative to the plane on the Y axis.
+                // HEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+                // HEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+                // HEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+                // HEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+                // HEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+                // HEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
                 float hx = map(ori + dir * tx);
+
                 if(hx > 0.0) return tx;
+
                 float hm = map(ori + dir * tm);
                 float tmid = 0.0;
+
                 for(int i = 0; i < NUM_STEPS; i++) {
                     tmid = mix(tm,tx, hm/(hm-hx));
                     p = ori + dir * tmid;
@@ -297,49 +414,94 @@
             // main
             void mainImage( out vec4 fragColor, in vec2 fragCoord ) {
 
-                // Get the UVs
+                /*
+                * Get the UVs
+                * 2D Pixel location passed in as raw pixel, let's divide by resolution
+                * to convert to coordinates between 0 and 1
+                */
                 vec2 uv = fragCoord.xy / iResolution.xy;
-                // Dunno yet.
-                //uv = uv * 2.0 - 1.0;
-                //uv.x *= iResolution.x / iResolution.y;
+
+                // Shift pixel coordinates from 0 to 1 to between -1 and 1
+                uv = uv * 2.0 - 1.0;
+                uv.x *= iResolution.x / iResolution.y;
+
+                //fragColor = vec4(uv,0.0,1.0);
+                //return;
 
                 // Get the time.
-                float time = iGlobalTime * 0.01; //+ iMouse.x*0.01;
+                float time = iGlobalTime * 0.01;
 
                 // ray
-                vec3 viewAngle = vec3(sin(time * 3.0) * 0.1, sin(time) * 0.2 + 0.3, time);
-                vec3 viewOrigin = vec3(0.0,2.0,3.0);
-                vec3 dir = normalize(vec3(uv.xy,-2.0)); dir.z += length(uv) * 0.15;
+                // The viewAngle. Needs to be passed through a uniform.
+                vec3 viewAngle = vec3(0.0,0.3,0.0);
+
+                // This is the place where the eye is at. Get it through a uniform!
+                vec3 viewOrigin = vec3(0.0,3.5,5.0);
+
+                /*
+                * This is the ray direction we are shooting from the camera location ("ori") that we need to light
+                * for this pixel.  The -2.0 indicates we are using a focal length of 2.0 - this is just an artistic choice and
+                * results in about a 90 degree field of view.
+                */
+                vec3 dir = normalize(vec3(uv.xy,-2.0));
+
+                /*
+                * Distort the ray a bit for a fish eye effect (if you remove this line, it will remove
+                * the fish eye effect and look like a realistic perspective).
+                */
+                // dir.z += length(uv) * 0.15;
+
+                /*
+                * Renormalize the ray direction, and then rotate it based on the previously calculated
+                * animation angle "ang".  "fromEuler" just calculates a rotation matrix from a vector of angles.
+                * if you remove the " * fromEuler(ang)" part, you will disable the camera rotation animation.
+                */
                 dir = normalize(dir) * fromEuler(viewAngle);
 
                 // tracing
                 vec3 p;
                 heightMapTracing(viewOrigin,dir,p);
+
+                // Distance vector to ocean surface for this pixel's ray.
                 vec3 dist = p - viewOrigin;
+
+                // Calculate the normal on the ocean surface where we intersected (p), using
+                // different "resolution" (in a sense) based on how far away the ray traveled.  Normals close to
+                // the camera should be calculated with high resolution, and normals far from the camera should be calculated with low resolution
+                // The reason to do this is that specular effects (or non linear normal based lighting effects) become fairly random at
+                // far distances and low resolutions and can cause unpleasant shimmering during motion.
                 vec3 n = getNormal(p, dot(dist,dist) * EPSILON_NRM);
+
+                // No more need for the light location.
+                // bteitler: direction of the infinitely far away directional light.  Changing this will change
+                // the sunlight direction.
                 vec3 light = normalize(vec3(0.0,1.0,0.8));
 
                 // color
                 vec3 color = mix(
-                getSkyColor(dir),
-                getSeaColor(p,n,light,dir,dist),
-                pow(smoothstep(0.0,-0.05,dir.y),0.1));
+                    getSkyColor(dir),
+                    getSeaColor(p,n,light,dir,dist),
+                    pow(smoothstep(0.0,-0.05,dir.y),0.1)
+                );
 
                 // post
-                fragColor = vec4(pow(color,vec3(0.75)), 1.0);
+                gl_FragColor = vec4(color, 1.0);
             }
 
-            // Don't touch.
+
             void main( void ){
-                vec4 color = vColor;//vec4(0.0,0.0,0.0,1.0);
-                vec2 mapCoord = vec2(vTextureCoord.s, vTextureCoord.t);
+                vec4 color = vColor;
 
+                //vec2 mapCoord = vec2(vTextureCoord.s, vTextureCoord.t);
+                //mainImage( color, mapCoord );
                 //mainImage( color, gl_FragCoord.xy );
-                //color.w = 1.0;
-                //gl_FragColor = color;
-                gl_FragColor = texture2D(uColorTexture, vec2(vTextureCoord.s, vTextureCoord.t));
+
+                gl_FragColor = color;
+                //gl_FragColor = texture2D(uColorTexture, vec2(vTextureCoord.s, vTextureCoord.t));
             }
+
 	</script>
+
 
         <script id="shader-landscape-vs" type="x-shader/x-vertex">
         attribute vec3 aVertexPosition;
@@ -509,7 +671,7 @@
     </script>
 
         <!-- My Utilities. -->
-        <script src="js/meshBuilder.js"></script>
+        <script src="js/objects/mesh.js"></script>
         <script src="js/mathTools.js"></script>
         <script src="js/shared.js"></script>
         <script src="js/raytracer.js"></script>
@@ -560,7 +722,7 @@
                     <input checked="checked" type="checkbox" onclick="changeDrawMode()">Wireframe
                 </p>
 
-                <table id="waves" class="hidden">
+                <table id="waves" class="">
                     <tbody>
                     <tr>
                         <th id="enable"></th>
@@ -574,39 +736,43 @@
 
                     <tr id="wave0">
                         <td><input checked="checked" type="checkbox"></td>
-                        <td><input value="0.5" size="6" type="text"></td>
-                        <td><input value="20" size="6" type="text"></td>
-                        <td><input value="45" size="6" type="text"></td>
-                        <td><input value="45" size="6" type="text"></td>
-                        <td><input value="0.4" size="6" type="text"></td>
-                        <th rowspan="4">Big waves</th>
+                        <td><input id="amplitude0" value="0.5" size="6" type="text"></td>
+                        <td><input id="wavelength0" value="20" size="6" type="text"></td>
+                        <td><input id="directionX0" value="45" size="6" type="text"></td>
+                        <td><input id="directionY0" value="45" size="6" type="text"></td>
+                        <td><input id="speed0" value="0.4" size="6" type="text"></td>
+                        <td><button class="but0" type="submit" onclick="setWave(0)">Set Data</button></td>
+                        <!--<th rowspan="4">Big waves</th>-->
                     </tr>
 
                     <tr id="wave1">
                         <td><input checked="checked" type="checkbox"></td>
-                        <td><input value="0.4" size="6" type="text"></td>
-                        <td><input value="15" size="6" type="text"></td>
-                        <td><input value="120" size="6" type="text"></td>
-                        <td><input value="45" size="6" type="text"></td>
-                        <td><input value="0.8" size="6" type="text"></td>
+                        <td><input id="amplitude1" value="0.4" size="6" type="text"></td>
+                        <td><input id="wavelength1" value="15" size="6" type="text"></td>
+                        <td><input id="directionX1" value="120" size="6" type="text"></td>
+                        <td><input id="directionY1" value="45" size="6" type="text"></td>
+                        <td><input id="speed1" value="0.8" size="6" type="text"></td>
+                        <td><button type="submit" onclick="setWave(1)">Set Data</button></td>
                     </tr>
 
                     <tr id="wave2">
                         <td><input checked="checked" type="checkbox"></td>
-                        <td><input value="0.2" size="6" type="text"></td>
-                        <td><input value="12" size="6" type="text"></td>
-                        <td><input value="170" size="6" type="text"></td>
-                        <td><input value="45" size="6" type="text"></td>
-                        <td><input value="0.8" size="6" type="text"></td>
+                        <td><input id="amplitude2" value="0.2" size="6" type="text"></td>
+                        <td><input id="wavelength2" value="12" size="6" type="text"></td>
+                        <td><input id="directionX2" value="170" size="6" type="text"></td>
+                        <td><input id="directionY2" value="45" size="6" type="text"></td>
+                        <td><input id="speed2" value="0.8" size="6" type="text"></td>
+                        <td><button type="submit" onclick="setWave(2)">Set Data</button></td>
                     </tr>
 
                     <tr id="wave3">
                         <td><input checked="checked" type="checkbox"></td>
-                        <td><input value="0.1" size="6" type="text"></td>
-                        <td><input value="10" size="6" type="text"></td>
-                        <td><input value="65" size="6" type="text"></td>
-                        <td><input value="45" size="6" type="text"></td>
-                        <td><input value="1.0" size="6" type="text"></td>
+                        <td><input id="amplitude3" value="0.1" size="6" type="text"></td>
+                        <td><input id="wavelength3" value="10" size="6" type="text"></td>
+                        <td><input id="directionX3" value="65" size="6" type="text"></td>
+                        <td><input id="directionY3" value="45" size="6" type="text"></td>
+                        <td><input id="speed3" value="1.0" size="6" type="text"></td>
+                        <td><button type="submit" onclick="setWave(3)">Set Data</button></td>
                     </tr>
 
                     <tr>
@@ -651,7 +817,6 @@
                         <td><input value="45" size="6" type="text"></td>
                         <td><input value="1.2" size="6" type="text"></td>
                     </tr>
-
                     </tbody>
                 </table>
             </div>

@@ -6,22 +6,31 @@ function initShaderParameters(prg)
     glContext.enableVertexAttribArray(prg.colorAttribute);
 
     // Add the texture coordinate attribute
-    prg.textureCoordsAttribute = glContext.getAttribLocation(prg, "aTextureCoord");
-    glContext.enableVertexAttribArray(prg.textureCoordsAttribute);
-
+    if (addTexture)
+    {
+        prg.textureCoordsAttribute = glContext.getAttribLocation(prg, "aTextureCoord");
+        glContext.enableVertexAttribArray(prg.textureCoordsAttribute);
+    }
     // Matrix uniforms.
     prg.pMatrixUniform  = glContext.getUniformLocation(prg, 'uPMatrix');
     prg.mvMatrixUniform = glContext.getUniformLocation(prg, 'uMVMatrix');
 
     // Texture uniform.
-    prg.colorTextureUniform = glContext.getUniformLocation(prg, "uColorTexture");
+    if (addTexture)
+    {
+        prg.colorTextureUniform = glContext.getUniformLocation(prg, "uColorTexture");
+    }
 
-    // Wave time.
+    // Canvas resolution uniform.
+    prg.iResolution = glContext.getUniformLocation(prg, 'iResolution');
+
+    // Wave uniforms.
     prg.waterHeight = glContext.getUniformLocation(prg, 'waterHeight');
+    prg.waveSteepness = glContext.getUniformLocation(prg, 'uQ');
     prg.waveTime    = glContext.getUniformLocation(prg, 'waveTime');
     prg.amplitude   = glContext.getUniformLocation(prg, 'amplitude');
     prg.wavelength  = glContext.getUniformLocation(prg, 'wavelength');
-    prg.speed       = glContext.getUniformLocation(prg, 'speed');
+    prg.speeds       = glContext.getUniformLocation(prg, 'speed');
     prg.directionsX = glContext.getUniformLocation(prg, 'directionsX');
     prg.directionsY = glContext.getUniformLocation(prg, 'directionsY');
     prg.iGlobalTime = glContext.getUniformLocation(prg, 'iGlobalTime');
@@ -29,6 +38,16 @@ function initShaderParameters(prg)
     //prg.pressureGrid = glContext.getUniformLocation(prg,'uPressionGrid');
     // No good.
     //setShaderConstants('waterProgram');
+
+    // Light Uniforms.
+    prg.lightPositionUniform    = glContext.getUniformLocation(prg, 'uLightPosition');
+    //prg.drawNormalUniform       = glContext.getUniformLocation(prg, 'uDrawNormal');
+    //prg.shininessUniform        = glContext.getUniformLocation(prg, 'uShininess');
+    //prg.waveUniform             = glContext.getUniformLocation(prg, 'uWave');
+    //prg.lightAmbientUniform     = glContext.getUniformLocation(prg, 'uLightAmbient');
+    //prg.materialDiffuseUniform  = glContext.getUniformLocation(prg, 'uMaterialDiffuse');
+    //prg.materialSpecularUniform = glContext.getUniformLocation(prg, 'uMaterialSpecular');
+
 }
 
 function SetShaderConstants(programName)
@@ -44,41 +63,12 @@ function SetShaderConstants(programName)
     //setShaderConstant1F("waveWidth", waveWidth);
 }
 
-function OldinitBuffers()
-{
-    indices        = [];
-    vertices       = [];
-    colors         = [];
-    var meshBounds = [];
 
-    buildBasicMesh(meshSize[0], meshSize[1], vec2.create(), quadSize[0], quadSize[1], meshBounds);
-
-    initializePressureGrid(meshBounds);
-    initializeTextureCoordinates(meshBounds);
-
-    vertexBuffer     = getVertexBufferWithVertices(vertices);
-    indexBuffer      = getIndexBufferWithIndices(indices);
-    colorBuffer      = getVertexBufferWithVertices(colors);
-    textCoordsBuffer = getArrayBufferWithArray(textCoords);
-}
-
-function initBuffers()
+function initializeObjects()
 {
     water.create(meshSize[0], meshSize[1], vec2.create(), quadSize[0], quadSize[1])
 }
 
-function initializeTextureCoordinates(meshBounds)
-{
-    // Define the UVs of the texture.
-    var vertexSE = meshBounds[0];
-    textCoords.push(0.0, 0.0);
-    var vertexSW = meshBounds[1];
-    textCoords.push(0.0, 1.0);
-    var vertexNW = meshBounds[2];
-    textCoords.push(1.0, 1.0);
-    var vertexNE = meshBounds[3];
-    textCoords.push(1.0, 0.0);
-}
 
 function initializePressureGrid(meshBounds)
 {
@@ -130,8 +120,10 @@ function drawScene()
     time = (new Date()).getTime() / 1000 - startTime;
     waveTime += waveFrequency;
 
+    // Vary the parameters, doesn't work so comment for now.
     //varyParameters();
 
+    // Clear the canvas.
     glContext.clearColor(0.9, 0.9, 0.9, 1.0);
     glContext.enable(glContext.DEPTH_TEST);
     glContext.clear(glContext.COLOR_BUFFER_BIT | glContext.DEPTH_BUFFER_BIT);
@@ -139,13 +131,11 @@ function drawScene()
 
     // Transformation matrices.
     // Build the matrices as identity matrices.
-
     mat4.identity(pMatrix);
     mat4.identity(mvMatrix);
 
-
-    // With perspective
-    if (true)
+    // Enable perspective.
+    if (usePerspective)
     {
         // Set the perspective on the projection matrix.
         // Angle: 60 degrees
@@ -157,16 +147,23 @@ function drawScene()
         var translationMat    = mat4.create();
         mat4.translate(translationMat, translationMat, translationVector);
 
+        // Rotate with quaternions if the user drags.
         rotateModelViewMatrixUsingQuaternion();
 
         mat4.multiply(mvMatrix, translationMat, mvMatrix);
     }
+    else
+    {
+        // Rotate with quaternions if the user drags.
+        rotateModelViewMatrixUsingQuaternion();
+    }
 
+    // Set up our uniforms.
     setupUniforms();
 
+    // Draw the water mesh.
     water.draw(drawPrimitive);
 
-    //drawObject();
 }
 
 function setupUniforms()
@@ -176,61 +173,51 @@ function setupUniforms()
     glContext.uniformMatrix4fv(prg.pMatrixUniform, false, pMatrix);
     glContext.uniformMatrix4fv(prg.mvMatrixUniform, false, mvMatrix);
 
-    glContext.uniform1i(prg.colorTextureUniform, 0);
+    if (addTexture)
+    {
+        glContext.uniform1i(prg.colorTextureUniform, 0);
+    }
 
     glContext.uniform1f(prg.waterHeight, waterHeight);
+    glContext.uniform1f(prg.waveSteepness, WaveSteepness);
     glContext.uniform1fv(prg.amplitude, Amplitudes);
     glContext.uniform1fv(prg.wavelength, WaveLengths);
-    glContext.uniform1fv(prg.speed, Speeds);
+    glContext.uniform1fv(prg.speeds, Speeds);
     glContext.uniform1fv(prg.directionsX, DirectionsX);
     glContext.uniform1fv(prg.directionsY, DirectionsY);
     glContext.uniform1f(prg.iGlobalTime, time);
+    glContext.uniform3f(prg.iResolution, canvasResolution[0],canvasResolution[1],canvasResolution[2]);
 }
-
-function drawObject()
-{
-    glContext.bindBuffer(glContext.ARRAY_BUFFER, vertexBuffer);
-    glContext.vertexAttribPointer(prg.vertexPositionAttribute, 3, glContext.FLOAT, false, 0, 0);
-
-    glContext.bindBuffer(glContext.ARRAY_BUFFER, colorBuffer);
-    glContext.vertexAttribPointer(prg.colorAttribute, 4, glContext.FLOAT, false, 0, 0);
-
-    // Bind the texture buffer.
-    glContext.bindBuffer(glContext.ARRAY_BUFFER, textCoordsBuffer);
-    glContext.vertexAttribPointer(prg.textureCoordsAttribute, 2, glContext.FLOAT, false, 0, 0);
-
-    // Activate the texture.
-    //glContext.activeTexture(glContext.TEXTURE0);
-
-    // Bind the texture.
-    //glContext.bindTexture(glContext.TEXTURE_2D, texColorTab[currentTexID-1]);
-
-    glContext.bindBuffer(glContext.ELEMENT_ARRAY_BUFFER, indexBuffer);
-
-    if (wireframe)
-    {
-        glContext.drawElements(glContext.LINE_STRIP, indices.length, glContext.UNSIGNED_SHORT, 0);
-    }
-    else
-    {
-        glContext.drawElements(glContext.TRIANGLES, indices.length, glContext.UNSIGNED_SHORT, 0);
-    }
-}
-
 
 function initWebGL()
 {
     var originalGlContext = getGLContext('webgl-canvas');
+    //glContext             = originalGlContext;//WebGLDebugUtils.makeDebugContext(originalGlContext);
     glContext             = WebGLDebugUtils.makeDebugContext(originalGlContext);
 
-    //initializePressureGrid();
-    //initializePressureBuffer();
     initProgram();
-    initBuffers();
+    initializeLights();
+    initializeObjects();
+
     console.table(getProgramInfo(glContext, prg).uniforms);
+
     renderLoop();
 }
 
+function initializeLights()
+{
+    // Specifiy the light position.
+    glContext.uniform3f(prg.lightPositionUniform, 0.0, 0.0, -1000);
+
+    // More not needed for now.
+    //glContext.uniform3f(prg.lightAmbientUniform, 0.1, 0.1, 0.1);
+    //glContext.uniform3f(prg.materialSpecularUniform, 0.5, 0.5, 0.5);
+    //glContext.uniform3f(prg.materialDiffuseUniform, 0.6, 0.6, 0.6);
+    //
+    //glContext.uniform1f(prg.shininessUniform, 10000.0);
+    //
+    //glContext.uniform1f(prg.waveUniform, 0.5);
+}
 
 function setVectorZ(z)
 {
@@ -246,7 +233,6 @@ function setVectorZ(z)
 
 function changePressure(x, y)
 {
-    console.log("Can i do this? [" + x + "," + y + "]");
     var tracer       = new Raytracer();
     var ray          = tracer.getRayForPixel(x, y);
     console.log(ray);
