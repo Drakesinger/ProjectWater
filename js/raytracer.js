@@ -53,19 +53,22 @@ function Raytracer()
     var axisY          = vec3.fromValues(m[1], m[5], m[9]);
     var axisZ          = vec3.fromValues(m[2], m[6], m[10]);
     var offset         = vec3.fromValues(m[3], m[7], m[11]);
+
     var negativeOffset = vec3.create();
     vec3.negate(negativeOffset, offset);
 
-    this.eye = vec3.fromValues(vec3.dot(negativeOffset, axisX), vec3.dot(negativeOffset, axisY), vec3.dot(negativeOffset, axisZ));
+    this.eye = vec3.fromValues(vec3.dot(negativeOffset, axisX), vec3.dot(negativeOffset, axisY), vec3.dot(negativeOffset, axisZ),1);
+    console.log("got the eye:");
+    console.log(this.eye);
 
     var minX = v[0], maxX = minX + v[2];
     var minY = v[1], maxY = minY + v[3];
 
-
-    this.ray00    = vec4.subtract(this.ray00, unProject(minX, minY, 1), this.eye);
-    this.ray10    = vec4.subtract(this.ray10, unProject(maxX, minY, 1), this.eye);
-    this.ray01    = vec4.subtract(this.ray01, unProject(minX, maxY, 1), this.eye);
-    this.ray11    = vec4.subtract(this.ray11, unProject(maxX, maxY, 1), this.eye);
+    // TODO - Problem here
+    this.ray00    = vec4.subtract(vec4.create(), unProject(minX, minY, 1), this.eye);
+    this.ray10    = vec4.subtract(vec4.create(), unProject(maxX, minY, 1), this.eye);
+    this.ray01    = vec4.subtract(vec4.create(), unProject(minX, maxY, 1), this.eye);
+    this.ray11    = vec4.subtract(vec4.create(), unProject(maxX, maxY, 1), this.eye);
     this.viewport = v;
 }
 
@@ -90,7 +93,7 @@ function unProject(winX, winY, winZ, modelview, projection, viewport)
      console.log("vp " + viewport + "gl.vp" + glContext.getParameter(glContext.VIEWPORT);
      */
 
-    var point      = vec3.fromValues((winX - viewport[0]) / viewport[2] * 2 - 1, (winY - viewport[1]) / viewport[3] * 2 - 1, winZ * 2 - 1);
+    var point      = vec4.fromValues((winX - viewport[0]) / viewport[2] * 2 - 1, (winY - viewport[1]) / viewport[3] * 2 - 1, winZ * 2 - 1, 1);
     var tempMatrix = mat4.multiply(mat4.create(), projection, modelview);
 
     var resultMatrix = mat4.create();
@@ -189,13 +192,13 @@ Raytracer.hitTestTriangle = function (origin, ray, a, b, c)
 
     if (t > 0)
     {
-        var hit    = vec3.scaleAndAdd(vec3.create(),origin,ray,t);
-        var toHit  = hit.subtract(a);
-        var dot00  = ac.dot(ac);
-        var dot01  = ac.dot(ab);
-        var dot02  = ac.dot(toHit);
-        var dot11  = ab.dot(ab);
-        var dot12  = ab.dot(toHit);
+        var hit    = vec3.scaleAndAdd(vec3.create(), origin, ray, t);
+        var toHit  = vec3.subtract(vec3.create(), hit, a);
+        var dot00  = vec3.dot(ac, ac);
+        var dot01  = vec3.dot(ac, ab);
+        var dot02  = vec3.dot(ac, toHit);
+        var dot11  = vec3.dot(ab, ab);
+        var dot12  = vec3.dot(ab, toHit);
         var divide = dot00 * dot11 - dot01 * dot01;
         var u      = (dot11 * dot02 - dot01 * dot12) / divide;
         var v      = (dot00 * dot12 - dot01 * dot02) / divide;
