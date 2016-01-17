@@ -293,7 +293,7 @@ function calculateTangents(vs, tc, ind) {
  * @param Value
  * @constructor
  */
-function SetShaderConstant1F(UniformName, Value)
+function setShaderConstant1F(UniformName, Value)
 {
     var Position = glContext.getUniformLocation(prg, UniformName);
     glContext.uniform1f(Position, Value);
@@ -304,7 +304,7 @@ function SetShaderConstant1F(UniformName, Value)
  * @param Value
  * @constructor
  */
-function SetShaderConstant1I(UniformName, Value)
+function setShaderConstant1I(UniformName, Value)
 {
     var Position = glContext.getUniformLocation(prg, UniformName);
     glContext.uniform1i(Position, Value);
@@ -315,7 +315,7 @@ function SetShaderConstant1I(UniformName, Value)
  * @param Value
  * @constructor
  */
-function SetShaderConstant1FV(UniformName, Value)
+function setShaderConstant1FV(UniformName, Value)
 {
     var Position = glContext.getUniformLocation(prg, UniformName);
     glContext.uniform1fv(Position, Value);
@@ -326,7 +326,7 @@ function SetShaderConstant1FV(UniformName, Value)
  * @param Value
  * @constructor
  */
-function SetShaderConstant2FV(UniformName, Value)
+function setShaderConstant2FV(UniformName, Value)
 {
     var Position = glContext.getUniformLocation(prg, UniformName);
     glContext.uniform2fv(Position, Value);
@@ -339,7 +339,7 @@ function SetShaderConstant2FV(UniformName, Value)
  * @param ValueZ
  * @constructor
  */
-function SetShaderConstant3F(UniformName, ValueX, ValueY, ValueZ)
+function setShaderConstant3F(UniformName, ValueX, ValueY, ValueZ)
 {
     var Position = glContext.getUniformLocation(prg, UniformName);
     glContext.uniform3f(Position, ValueX, ValueY, ValueZ);

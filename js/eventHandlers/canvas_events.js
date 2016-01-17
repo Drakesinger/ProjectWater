@@ -64,7 +64,7 @@ function handleMouseClick(event)
 	var pX = (mousePos.x - myCanvas.width / 2.0) / myCanvas.width * 2.0;
 	var pY = (myCanvas.height / 2.0 - mousePos.y) / myCanvas.height * 2.0;
 	var message = 'point: ' + pX + ',' + pY;
-	console.log(message);
+	//console.log(message);
     changePressure(pX,pY);
 	//setVectorXY(pX, pY);
 	//addPointOnScene(pX, pY);
@@ -105,7 +105,7 @@ myCanvas.addEventListener('click',
         var pX = (mousePos.x - myCanvas.width / 2.0) / myCanvas.width * 2.0;
         var pY = (myCanvas.height / 2.0 - mousePos.y) / myCanvas.height * 2.0;
         var message = 'point: ' + pX + ',' + pY;
-        console.log(message);
+        //console.log(message);
         //setVectorXY(pX, pY);
         //addPointOnScene(pX, pY);
     }, false);
@@ -113,6 +113,16 @@ myCanvas.addEventListener('click',
 function changeDrawMode()
 {
 	wireframe = !wireframe;
+
+    if (wireframe == true)
+    {
+        drawPrimitive.gl_primitive = glContext.LINE_STRIP;
+    }
+    else
+    {
+        drawPrimitive.gl_primitive = glContext.TRIANGLES;
+    }
+
 }
 
 window.onkeydown = checkKey;

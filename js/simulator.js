@@ -28,23 +28,23 @@ function initShaderParameters(prg)
 
     //prg.pressureGrid = glContext.getUniformLocation(prg,'uPressionGrid');
     // No good.
-    //SetShaderConstants('waterProgram');
+    //setShaderConstants('waterProgram');
 }
 
 function SetShaderConstants(programName)
 {
-    SetShaderConstant1F("waterHeight", waterHeight);
-    SetShaderConstant1FV("amplitude", Amplitudes);
-    SetShaderConstant1FV("wavelength", WaveLengths);
-    SetShaderConstant1FV("speed", Speeds);
-    SetShaderConstant2FV("directionsX", DirectionsX);
-    SetShaderConstant2FV("directionsY", DirectionsY);
-    SetShaderConstant1F("iGlobalTime", time);
-    SetShaderConstant3F("iResolution", 500, 500, 1.0)
-    //SetShaderConstant1F("waveWidth", waveWidth);
+    setShaderConstant1F("waterHeight", waterHeight);
+    setShaderConstant1FV("amplitude", Amplitudes);
+    setShaderConstant1FV("wavelength", WaveLengths);
+    setShaderConstant1FV("speed", Speeds);
+    setShaderConstant2FV("directionsX", DirectionsX);
+    setShaderConstant2FV("directionsY", DirectionsY);
+    setShaderConstant1F("iGlobalTime", time);
+    setShaderConstant3F("iResolution", 500, 500, 1.0)
+    //setShaderConstant1F("waveWidth", waveWidth);
 }
 
-function initBuffers()
+function OldinitBuffers()
 {
     indices        = [];
     vertices       = [];
@@ -61,7 +61,12 @@ function initBuffers()
     colorBuffer      = getVertexBufferWithVertices(colors);
     textCoordsBuffer = getArrayBufferWithArray(textCoords);
 }
-// TODO - Fix the problem here.
+
+function initBuffers()
+{
+    water.create(meshSize[0], meshSize[1], vec2.create(), quadSize[0], quadSize[1])
+}
+
 function initializeTextureCoordinates(meshBounds)
 {
     // Define the UVs of the texture.
@@ -100,20 +105,12 @@ function initializePressureBuffer()
      glContext.bindTexture(glContext.TEXTURE_2D, rttTexture[index]);
      glContext.texParameteri(glContext.TEXTURE_2D, glContext.TEXTURE_MIN_FILTER, glContext.NEAREST);
      glContext.texParameteri(glContext.TEXTURE_2D, glContext.TEXTURE_MAG_FILTER, glContext.NEAREST);
-     glContext.texImage2D(
-     glContext.TEXTURE_2D, 0, glContext.RGBA, rttFramebuffer[index].width,
-     rttFramebuffer[index].height, 0, glContext.RGBA, glContext.UNSIGNED_BYTE, null);
+     glContext.texImage2D(glContext.TEXTURE_2D, 0, glContext.RGBA, rttFramebuffer[index].width, rttFramebuffer[index].height, 0, glContext.RGBA, glContext.UNSIGNED_BYTE, null);
      var renderbuffer             = glContext.createRenderbuffer();
      glContext.bindRenderbuffer(glContext.RENDERBUFFER, renderbuffer);
-     glContext.renderbufferStorage(
-     glContext.RENDERBUFFER, glContext.DEPTH_COMPONENT16,
-     rttFramebuffer[index].width, rttFramebuffer[index].height);
-     glContext.framebufferTexture2D(
-     glContext.FRAMEBUFFER, glContext.COLOR_ATTACHMENT0,
-     glContext.TEXTURE_2D, rttTexture[index], 0);
-     glContext.framebufferRenderbuffer(
-     glContext.FRAMEBUFFER, glContext.DEPTH_ATTACHMENT,
-     glContext.RENDERBUFFER, renderbuffer);
+     glContext.renderbufferStorage(glContext.RENDERBUFFER, glContext.DEPTH_COMPONENT16, rttFramebuffer[index].width, rttFramebuffer[index].height);
+     glContext.framebufferTexture2D(glContext.FRAMEBUFFER, glContext.COLOR_ATTACHMENT0, glContext.TEXTURE_2D, rttTexture[index], 0);
+     glContext.framebufferRenderbuffer(glContext.FRAMEBUFFER, glContext.DEPTH_ATTACHMENT, glContext.RENDERBUFFER, renderbuffer);
      glContext.bindTexture(glContext.TEXTURE_2D, null);
      glContext.bindRenderbuffer(glContext.RENDERBUFFER, null);
      glContext.bindFramebuffer(glContext.FRAMEBUFFER, null);
@@ -167,9 +164,9 @@ function drawScene()
 
     setupUniforms();
 
-    //water.draw();
+    water.draw(drawPrimitive);
 
-    drawObject();
+    //drawObject();
 }
 
 function setupUniforms()
@@ -247,7 +244,14 @@ function setVectorZ(z)
     }
 }
 
-function changePressure(pX, pY)
+function changePressure(x, y)
 {
-    console.log("Can i do this? [" + pX + "," + pY + "]");
+    console.log("Can i do this? [" + x + "," + y + "]");
+    var tracer       = new Raytracer();
+    var ray          = tracer.getRayForPixel(x, y);
+    console.log(ray);
+    console.log(tracer.eye);
+    var pointOnPlane = vec3.create();//tracer.eye.add(ray.multiply(-tracer.eye.y / ray.y));
+    vec3.add(pointOnPlane, tracer.eye, vec3.scale(vec3.create(), ray, -tracer.eye[1] / ray[1]))
+    console.log("Point on Plane:" + vec3.toString(pointOnPlane));
 }

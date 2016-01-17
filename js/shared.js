@@ -8,9 +8,9 @@ var time      = new Date().getTime() / 1000;
 var water = null;
 
 // Wave Data
-var meshSize = [1, 1];
+var meshSize = [20, 2];
 var gridSize = [1, 1];
-var quadSize = [10, 10];
+var quadSize = [1, 1];
 
 var pressureGrid = createTwoDimensionalArray(gridSize[0], gridSize[1]);
 var minPressure  = -250;
@@ -48,6 +48,9 @@ vertexColor.push(0.7, 0.7, 1.0, 1.0);
 var sphereDivisions = 0;
 var indexCnt        = 0;
 
+// Meshes.
+var water = new Mesh();
+
 // Buffers.
 var vertexBuffer     = null;
 var indexBuffer      = null;
@@ -75,4 +78,5 @@ var rotY = 0;
 var rotX = -70; //-70
 
 // Drawing type.
+var drawPrimitive = {};
 var wireframe = true;
