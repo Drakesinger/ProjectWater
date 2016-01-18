@@ -27,7 +27,7 @@ Mesh.prototype = {
     create: function (nrOfQuadsX, nrOfQuadsY, origin, quadLength, quadWidth)
     {
         var distanceX = ((nrOfQuadsX / 2.0) * quadLength);
-        var distanceY = ((nrOfQuadsY / 2.0) * quadLength);
+        var distanceY = ((nrOfQuadsY / 2.0) * quadWidth);
         var x         = origin[0];
         var y         = origin[1];
 
@@ -49,7 +49,6 @@ Mesh.prototype = {
                 }
             }
         }
-
         this.bindBuffers();
     },
 
@@ -65,7 +64,6 @@ Mesh.prototype = {
         // 2 Triangles, 6 Indices
         this.addTriangle(baseIndex, baseIndex + 1, baseIndex + 2);
         this.addTriangle(baseIndex, baseIndex + 2, baseIndex + 3);
-        //this.addTriangle(baseIndex + 2, baseIndex + 3,baseIndex);
     },
 
     addTriangle: function (index0, index1, index2)
@@ -91,13 +89,13 @@ Mesh.prototype = {
     bindTexture: function ()
     {
         // Define the UVs of the texture.
-        var vertexSE = this.meshBounds[0];
+        //var vertexSE = this.meshBounds[0];
         this.textCoords.push(0.0, 0.0);
-        var vertexSW = this.meshBounds[1];
+        //var vertexSW = this.meshBounds[1];
         this.textCoords.push(0.0, 1.0);
-        var vertexNW = this.meshBounds[2];
+        //var vertexNW = this.meshBounds[2];
         this.textCoords.push(1.0, 1.0);
-        var vertexNE = this.meshBounds[3];
+        //var vertexNE = this.meshBounds[3];
         this.textCoords.push(1.0, 0.0);
     },
 
@@ -115,7 +113,7 @@ Mesh.prototype = {
     draw: function (options)
     {
 
-        options = options || {gl_primitive: glContext.LINE_STRIP};
+        options = options || {gl_primitive: glContext.TRIANGLES};
 
         // Bind the vertex buffer.
         glContext.bindBuffer(glContext.ARRAY_BUFFER, this.vertexBuffer);
@@ -142,7 +140,6 @@ Mesh.prototype = {
         glContext.bindBuffer(glContext.ELEMENT_ARRAY_BUFFER, this.indexBuffer);
 
         glContext.drawElements(options.gl_primitive, this.indices.length, glContext.UNSIGNED_SHORT, 0);
-
     }
 };
 

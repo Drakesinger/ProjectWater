@@ -58,8 +58,6 @@ function Raytracer()
     vec3.negate(negativeOffset, offset);
 
     this.eye = vec3.fromValues(vec3.dot(negativeOffset, axisX), vec3.dot(negativeOffset, axisY), vec3.dot(negativeOffset, axisZ),1);
-    console.log("got the eye:");
-    console.log(this.eye);
 
     var minX = v[0], maxX = minX + v[2];
     var minY = v[1], maxY = minY + v[3];

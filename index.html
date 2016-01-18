@@ -1,32 +1,32 @@
 <!doctype html>
 <html class="no-js" lang="">
-    <head>
-        <meta charset="utf-8">
-        <meta http-equiv="x-ua-compatible" content="ie=edge">
-        <title></title>
-        <meta name="description" content="">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <title></title>
+    <meta name="description" content="">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
 
-        <link rel="apple-touch-icon" href="apple-touch-icon.png">
-        <!-- Place favicon.ico in the root directory -->
+    <link rel="apple-touch-icon" href="apple-touch-icon.png">
+    <!-- Place favicon.ico in the root directory -->
 
-        <link rel="stylesheet" href="css/normalize.css">
-        <link rel="stylesheet" href="css/main.css">
-        <link rel="stylesheet" href="css/custom.css"/>
-        <script src="js/vendor/modernizr-2.8.3.min.js"></script>
-        <script src="js/vendor/jquery-1.11.3.min.js"></script>
-        <!-- WebGL related JavaScript files. -->
-        <!-- Debugging utilities. Useless really but well... -->
-        <script src="debug/webgl-debug.js"></script>
-        <script src="debug/webgl-utils.js"></script>
+    <link rel="stylesheet" href="css/normalize.css">
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/custom.css"/>
+    <script src="js/vendor/modernizr-2.8.3.min.js"></script>
+    <script src="js/vendor/jquery-1.11.3.min.js"></script>
+    <!-- WebGL related JavaScript files. -->
+    <!-- Debugging utilities. Useless really but well... -->
+    <script src="debug/webgl-debug.js"></script>
+    <script src="debug/webgl-utils.js"></script>
 
-        <!-- Math library -->
-        <script src="js/gl-matrix.js"></script>
-        <!-- WebGL tool library. Handles canvas loading, program initialization and shader compiling and attachment.-->
-        <script src="js/webglTools.js"></script>
+    <!-- Math library -->
+    <script src="js/gl-matrix.js"></script>
+    <!-- WebGL tool library. Handles canvas loading, program initialization and shader compiling and attachment.-->
+    <script src="js/webglTools.js"></script>
 
 
-        <script id="shader-vs" type="x-shader/x-vertex">
+    <script id="shader-vs" type="x-shader/x-vertex">
             const float pi = 3.14159;
 
             // The matrices.
@@ -58,6 +58,8 @@
             // The data to pass to the fragement shader.
             varying vec3 position;
             varying vec3 vLightPosition;
+            varying vec3 vLightRay;
+            varying vec3 vEyeVec;
 
             /*
             varying vec3 worldNormal;
@@ -127,7 +129,7 @@
 
             void main(void) {
 
-                gl_PointSize = 100.0;
+                //gl_PointSize = 100.0;
 
                 // Send the texture coordinate to the fragement shader.
                 vTextureCoord = aTextureCoord;
@@ -135,6 +137,9 @@
                 vec2 HorizontalCoordinates = aVertexPosition.xy;
 
                 vec4 vertexPos = vec4(aVertexPosition, 1.0);
+
+                vLightRay = (uPMatrix * uMVMatrix * vertexPos).xyz - uLightPosition.xyz;
+				vEyeVec = - vec3(vertexPos.xyz);
 
                 // Apply a Gerstner Wave.
                 gerstnerWavePositionFaster(vertexPos.x,vertexPos.y,vertexPos.z);
@@ -149,25 +154,39 @@
                 gl_Position = transformedVertexPos;
 
                 // Change the color to be able to see according to depth.
-                vec3 colorComponents = aColor.xyz + transformedVertexPos.z * 0.15;
+                vec3 colorComponents = aColor.xyz + transformedVertexPos.z * 0.015;
                 vColor = vec4(colorComponents, 1.0);
             }
-	</script>
 
-        <script id="shader-fs" type="x-shader/x-fragment">
+    </script>
+
+    <script id="shader-fs" type="x-shader/x-fragment">
             #ifdef GL_ES
                 precision highp float;
             #endif
             #extension GL_OES_standard_derivatives : enable
 
+            // The matrices.
+            uniform mat4 uMVMatrix;
+            uniform mat4 uPMatrix;
+
+            // Data from the vertex shader.
             varying vec3    vLightPosition;
             varying vec4	vColor;
             varying vec2    vTextureCoord;
+            varying vec3    vLightRay;
+			varying vec3    vEyeVec;
 
+            // The canvas resolution.
             uniform vec3	iResolution;
+            // The timer.
             uniform float	iGlobalTime;
 
+            // The light position non discretized.
             uniform vec3    uLightPosition;
+
+            // The camera position. // Probably
+            uniform vec3    uCameraPosition;
 
             uniform sampler2D uColorTexture;
 
@@ -382,12 +401,6 @@
                 float tx = 1000.0; // Light is far away.
 
                 // Height, relative to the plane on the Y axis.
-                // HEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
-                // HEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
-                // HEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
-                // HEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
-                // HEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
-                // HEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
                 float hx = map(ori + dir * tx);
 
                 if(hx > 0.0) return tx;
@@ -431,18 +444,20 @@
                 // Get the time.
                 float time = iGlobalTime * 0.01;
 
-                // ray
                 // The viewAngle. Needs to be passed through a uniform.
-                vec3 viewAngle = vec3(0.0,0.3,0.0);
+                vec3 viewAngle = vec3(0.0,0.0,0.0);//vec3(uMVMatrix[0][0],uMVMatrix[0][1],uMVMatrix[0][2]);
 
                 // This is the place where the eye is at. Get it through a uniform!
-                vec3 viewOrigin = vec3(0.0,3.5,5.0);
+                vec3 viewOrigin = vEyeVec;// uCameraLocation; // This should be it though.
+                // Original:
+                //vec3 viewOrigin = vec3(0.0,3.5,5.0);
 
                 /*
-                * This is the ray direction we are shooting from the camera location ("ori") that we need to light
+                * This is the ray direction we are shooting from the camera location ("viewOrigin") that we need to light
                 * for this pixel.  The -2.0 indicates we are using a focal length of 2.0 - this is just an artistic choice and
                 * results in about a 90 degree field of view.
                 */
+                //vec3 dir = normalize(vec3(uv.xy,-2.0));
                 vec3 dir = normalize(vec3(uv.xy,-2.0));
 
                 /*
@@ -456,7 +471,7 @@
                 * animation angle "ang".  "fromEuler" just calculates a rotation matrix from a vector of angles.
                 * if you remove the " * fromEuler(ang)" part, you will disable the camera rotation animation.
                 */
-                dir = normalize(dir) * fromEuler(viewAngle);
+                dir = normalize(dir);// * fromEuler(viewAngle);
 
                 // tracing
                 vec3 p;
@@ -472,10 +487,8 @@
                 // far distances and low resolutions and can cause unpleasant shimmering during motion.
                 vec3 n = getNormal(p, dot(dist,dist) * EPSILON_NRM);
 
-                // No more need for the light location.
-                // bteitler: direction of the infinitely far away directional light.  Changing this will change
-                // the sunlight direction.
-                vec3 light = normalize(vec3(0.0,1.0,0.8));
+                // Direction of the far away directional light.
+                vec3 light = normalize(uLightPosition);
 
                 // color
                 vec3 color = mix(
@@ -494,16 +507,17 @@
 
                 //vec2 mapCoord = vec2(vTextureCoord.s, vTextureCoord.t);
                 //mainImage( color, mapCoord );
-                //mainImage( color, gl_FragCoord.xy );
+                mainImage( color, gl_FragCoord.xy );
 
-                gl_FragColor = color;
+                //gl_FragColor = color;
                 //gl_FragColor = texture2D(uColorTexture, vec2(vTextureCoord.s, vTextureCoord.t));
             }
 
-	</script>
+
+    </script>
 
 
-        <script id="shader-landscape-vs" type="x-shader/x-vertex">
+    <script id="shader-landscape-vs" type="x-shader/x-vertex">
         attribute vec3 aVertexPosition;
         attribute vec3 aVertexNormal;
 
@@ -534,9 +548,10 @@
             vEyeVec = - vec3(vertex.xyz);
             gl_Position = uPMatrix * vertex;
          }
+
     </script>
 
-        <script id="shader-landscape-fs" type="x-shader/x-fragment">
+    <script id="shader-landscape-fs" type="x-shader/x-fragment">
         #ifdef GL_ES
             precision highp float;
         #endif
@@ -668,174 +683,194 @@
             finalColor += diffuseCol + uMaterialSpecular * specular;
             gl_FragColor = vec4(finalColor, 1.0);
         }
+
     </script>
 
-        <!-- My Utilities. -->
-        <script src="js/objects/mesh.js"></script>
-        <script src="js/mathTools.js"></script>
-        <script src="js/shared.js"></script>
-        <script src="js/raytracer.js"></script>
-        <script src="js/simulator.js"></script>
-        <script src="debug/myUtilites.js"></script>
+    <!-- My Utilities. -->
+    <script src="js/objects/mesh.js"></script>
+    <script src="js/mathTools.js"></script>
+    <script src="js/shared.js"></script>
+    <script src="js/raytracer.js"></script>
+    <script src="js/simulator.js"></script>
+    <script src="debug/myUtilites.js"></script>
 
 
-    </head>
-    <body onload="initWebGL()">
-        <!--[if lt IE 8]>
-            <p class="browserupgrade">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</p>
-        <![endif]-->
+</head>
+<body onload="initWebGL()">
+<!--[if lt IE 8]>
+<p class="browserupgrade">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade
+    your browser</a> to improve your experience.</p>
+<![endif]-->
 
-        <!-- Add your site or application content here -->
+<!-- Add your site or application content here -->
 
-        <article id="main-article" class="main-article container">
-            <header>
-                <nav class="nav-title">
-                    WebGL Project
-                </nav>
-                <h1 class="main-title">
-                    Water Simulation
-                </h1>
-            </header>
+<article id="main-article" class="main-article container">
+    <header>
+        <nav class="nav-title">
+            WebGL Project
+        </nav>
+        <h1 class="main-title">
+            Water Simulation
+        </h1>
+    </header>
 
-            <div id="content" class="content">
-                <div id="menu">
-                    <button id="enable-scroll">Enable scrolling</button>
-                    <button id="disable-scroll">Disable scrolling</button>
-                    <strong id="status" class="enabled">enabled</strong>
-                </div>
+    <div id="content" class="content">
+        <div id="menu">
+            <button id="enable-scroll">Enable scrolling</button>
+            <button id="disable-scroll">Disable scrolling</button>
+            <strong id="status" class="enabled">enabled</strong>
+        </div>
 
-                <ul>
-                    <li>+ : augment subdivision</li>
-                    <li>- : decrement subdivision</li>
-                    <li>a / d : rotation around Y axis</li>
-                    <li>w / s : rotation around X axis</li>
-                </ul>
+        <ul>
+            <li>+ : augment subdivision</li>
+            <li>- : decrement subdivision</li>
+            <li>a / d : rotation around Y axis</li>
+            <li>w / s : rotation around X axis</li>
+        </ul>
 
-                <canvas id="webgl-canvas" width="500" height="500">HTML5 is not supported</canvas>
+        <canvas id="webgl-canvas" width="500" height="500">HTML5 is not supported</canvas>
 
-                <!-- Window and Canvas event handlers. Must be imported after the canvas is defined. -->
-                <script src="js/eventHandlers/window_events.js"></script>
-                <script src="js/eventHandlers/canvas_events.js"></script>
-
-
-                <p>
-                    <input checked="checked" type="checkbox" onclick="changeDrawMode()">Wireframe
-                </p>
-
-                <table id="waves" class="">
-                    <tbody>
-                    <tr>
-                        <th id="enable"></th>
-                        <th id="amplitude">Amplitude</th>
-                        <th id="wavelength">Wavelength</th>
-                        <th id="directionX">Direction X</th>
-                        <th id="directionY">Direction Y</th>
-                        <th id="speed">Speed</th>
-                        <th></th>
-                    </tr>
-
-                    <tr id="wave0">
-                        <td><input checked="checked" type="checkbox"></td>
-                        <td><input id="amplitude0" value="0.5" size="6" type="text"></td>
-                        <td><input id="wavelength0" value="20" size="6" type="text"></td>
-                        <td><input id="directionX0" value="45" size="6" type="text"></td>
-                        <td><input id="directionY0" value="45" size="6" type="text"></td>
-                        <td><input id="speed0" value="0.4" size="6" type="text"></td>
-                        <td><button class="but0" type="submit" onclick="setWave(0)">Set Data</button></td>
-                        <!--<th rowspan="4">Big waves</th>-->
-                    </tr>
-
-                    <tr id="wave1">
-                        <td><input checked="checked" type="checkbox"></td>
-                        <td><input id="amplitude1" value="0.4" size="6" type="text"></td>
-                        <td><input id="wavelength1" value="15" size="6" type="text"></td>
-                        <td><input id="directionX1" value="120" size="6" type="text"></td>
-                        <td><input id="directionY1" value="45" size="6" type="text"></td>
-                        <td><input id="speed1" value="0.8" size="6" type="text"></td>
-                        <td><button type="submit" onclick="setWave(1)">Set Data</button></td>
-                    </tr>
-
-                    <tr id="wave2">
-                        <td><input checked="checked" type="checkbox"></td>
-                        <td><input id="amplitude2" value="0.2" size="6" type="text"></td>
-                        <td><input id="wavelength2" value="12" size="6" type="text"></td>
-                        <td><input id="directionX2" value="170" size="6" type="text"></td>
-                        <td><input id="directionY2" value="45" size="6" type="text"></td>
-                        <td><input id="speed2" value="0.8" size="6" type="text"></td>
-                        <td><button type="submit" onclick="setWave(2)">Set Data</button></td>
-                    </tr>
-
-                    <tr id="wave3">
-                        <td><input checked="checked" type="checkbox"></td>
-                        <td><input id="amplitude3" value="0.1" size="6" type="text"></td>
-                        <td><input id="wavelength3" value="10" size="6" type="text"></td>
-                        <td><input id="directionX3" value="65" size="6" type="text"></td>
-                        <td><input id="directionY3" value="45" size="6" type="text"></td>
-                        <td><input id="speed3" value="1.0" size="6" type="text"></td>
-                        <td><button type="submit" onclick="setWave(3)">Set Data</button></td>
-                    </tr>
-
-                    <tr>
-                        <td colspan="6">
-                            <hr>
-                        </td>
-                    </tr>
-
-                    <tr id="wave4">
-                        <td><input checked="checked" type="checkbox"></td>
-                        <td><input value="0.01" size="6" type="text"></td>
-                        <td><input value="1.0" size="6" type="text"></td>
-                        <td><input value="170" size="6" type="text"></td>
-                        <td><input value="45" size="6" type="text"></td>
-                        <td><input value="1.0" size="6" type="text"></td>
-                        <th rowspan="4">Small waves</th>
-                    </tr>
-
-                    <tr id="wave5">
-                        <td><input type="checkbox"></td>
-                        <td><input value="0.02" size="6" type="text"></td>
-                        <td><input value="1.5" size="6" type="text"></td>
-                        <td><input value="110" size="6" type="text"></td>
-                        <td><input value="45" size="6" type="text"></td>
-                        <td><input value="0.7" size="6" type="text"></td>
-                    </tr>
-
-                    <tr id="wave6">
-                        <td><input checked="checked" type="checkbox"></td>
-                        <td><input value="0.015" size="6" type="text"></td>
-                        <td><input value="1.2" size="6" type="text"></td>
-                        <td><input value="80" size="6" type="text"></td>
-                        <td><input value="45" size="6" type="text"></td>
-                        <td><input value="0.8" size="6" type="text"></td>
-                    </tr>
-
-                    <tr id="wave7">
-                        <td><input checked="checked" type="checkbox"></td>
-                        <td><input value="0.006" size="6" type="text"></td>
-                        <td><input value="0.8" size="6" type="text"></td>
-                        <td><input value="60" size="6" type="text"></td>
-                        <td><input value="45" size="6" type="text"></td>
-                        <td><input value="1.2" size="6" type="text"></td>
-                    </tr>
-                    </tbody>
-                </table>
-            </div>
-        </article>
+        <!-- Window and Canvas event handlers. Must be imported after the canvas is defined. -->
+        <script src="js/eventHandlers/window_events.js"></script>
+        <script src="js/eventHandlers/canvas_events.js"></script>
 
 
-        <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
-        <script>window.jQuery || document.write('<script src="js/vendor/jquery-1.11.3.min.js"><\/script>')</script>
-        <script src="js/plugins.js"></script>
-        <script src="js/main.js"></script>
+        <p>
+            <input checked="checked" type="checkbox" onclick="changeDrawMode()">Wireframe
+        </p>
 
-        <!-- Google Analytics: change UA-XXXXX-X to be your site's ID. -->
-        <script>
-            (function(b,o,i,l,e,r){b.GoogleAnalyticsObject=l;b[l]||(b[l]=
-            function(){(b[l].q=b[l].q||[]).push(arguments)});b[l].l=+new Date;
-            e=o.createElement(i);r=o.getElementsByTagName(i)[0];
-            e.src='https://www.google-analytics.com/analytics.js';
-            r.parentNode.insertBefore(e,r)}(window,document,'script','ga'));
-            ga('create','UA-XXXXX-X','auto');ga('send','pageview');
-        </script>
-    </body>
+        <table id="waves" class="">
+            <tbody>
+            <tr>
+                <th id="enable"></th>
+                <th id="amplitude">Amplitude</th>
+                <th id="wavelength">Wavelength</th>
+                <th id="directionX">Direction X</th>
+                <th id="directionY">Direction Y</th>
+                <th id="speed">Speed</th>
+                <th></th>
+            </tr>
+
+            <tr id="wave0">
+                <td><input checked="checked" type="checkbox"></td>
+                <td><input id="amplitude0" value="0.5" size="6" type="text"></td>
+                <td><input id="wavelength0" value="20" size="6" type="text"></td>
+                <td><input id="directionX0" value="45" size="6" type="text"></td>
+                <td><input id="directionY0" value="45" size="6" type="text"></td>
+                <td><input id="speed0" value="0.4" size="6" type="text"></td>
+                <td>
+                    <button class="but0" type="submit" onclick="setWave(0)">Set Data</button>
+                </td>
+                <!--<th rowspan="4">Big waves</th>-->
+            </tr>
+
+            <tr id="wave1">
+                <td><input checked="checked" type="checkbox"></td>
+                <td><input id="amplitude1" value="0.4" size="6" type="text"></td>
+                <td><input id="wavelength1" value="15" size="6" type="text"></td>
+                <td><input id="directionX1" value="120" size="6" type="text"></td>
+                <td><input id="directionY1" value="45" size="6" type="text"></td>
+                <td><input id="speed1" value="0.8" size="6" type="text"></td>
+                <td>
+                    <button type="submit" onclick="setWave(1)">Set Data</button>
+                </td>
+            </tr>
+
+            <tr id="wave2">
+                <td><input checked="checked" type="checkbox"></td>
+                <td><input id="amplitude2" value="0.2" size="6" type="text"></td>
+                <td><input id="wavelength2" value="12" size="6" type="text"></td>
+                <td><input id="directionX2" value="170" size="6" type="text"></td>
+                <td><input id="directionY2" value="45" size="6" type="text"></td>
+                <td><input id="speed2" value="0.8" size="6" type="text"></td>
+                <td>
+                    <button type="submit" onclick="setWave(2)">Set Data</button>
+                </td>
+            </tr>
+
+            <tr id="wave3">
+                <td><input checked="checked" type="checkbox"></td>
+                <td><input id="amplitude3" value="0.1" size="6" type="text"></td>
+                <td><input id="wavelength3" value="10" size="6" type="text"></td>
+                <td><input id="directionX3" value="65" size="6" type="text"></td>
+                <td><input id="directionY3" value="45" size="6" type="text"></td>
+                <td><input id="speed3" value="1.0" size="6" type="text"></td>
+                <td>
+                    <button type="submit" onclick="setWave(3)">Set Data</button>
+                </td>
+            </tr>
+
+            <tr>
+                <td colspan="6">
+                    <hr>
+                </td>
+            </tr>
+
+            <tr id="wave4">
+                <td><input checked="checked" type="checkbox"></td>
+                <td><input value="0.01" size="6" type="text"></td>
+                <td><input value="1.0" size="6" type="text"></td>
+                <td><input value="170" size="6" type="text"></td>
+                <td><input value="45" size="6" type="text"></td>
+                <td><input value="1.0" size="6" type="text"></td>
+                <th rowspan="4">Small waves</th>
+            </tr>
+
+            <tr id="wave5">
+                <td><input type="checkbox"></td>
+                <td><input value="0.02" size="6" type="text"></td>
+                <td><input value="1.5" size="6" type="text"></td>
+                <td><input value="110" size="6" type="text"></td>
+                <td><input value="45" size="6" type="text"></td>
+                <td><input value="0.7" size="6" type="text"></td>
+            </tr>
+
+            <tr id="wave6">
+                <td><input checked="checked" type="checkbox"></td>
+                <td><input value="0.015" size="6" type="text"></td>
+                <td><input value="1.2" size="6" type="text"></td>
+                <td><input value="80" size="6" type="text"></td>
+                <td><input value="45" size="6" type="text"></td>
+                <td><input value="0.8" size="6" type="text"></td>
+            </tr>
+
+            <tr id="wave7">
+                <td><input checked="checked" type="checkbox"></td>
+                <td><input value="0.006" size="6" type="text"></td>
+                <td><input value="0.8" size="6" type="text"></td>
+                <td><input value="60" size="6" type="text"></td>
+                <td><input value="45" size="6" type="text"></td>
+                <td><input value="1.2" size="6" type="text"></td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</article>
+
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+<script>window.jQuery || document.write('<script src="js/vendor/jquery-1.11.3.min.js"><\/script>')</script>
+<script src="js/plugins.js"></script>
+<script src="js/main.js"></script>
+
+<!-- Google Analytics: change UA-XXXXX-X to be your site's ID. -->
+<script>
+    (function (b, o, i, l, e, r)
+    {
+        b.GoogleAnalyticsObject = l;
+        b[l] || (b[l] =
+            function ()
+            {
+                (b[l].q = b[l].q || []).push(arguments)
+            });
+        b[l].l = +new Date;
+        e      = o.createElement(i);
+        r     = o.getElementsByTagName(i)[0];
+        e.src = 'https://www.google-analytics.com/analytics.js';
+        r.parentNode.insertBefore(e, r)
+    }(window, document, 'script', 'ga'));
+    ga('create', 'UA-XXXXX-X', 'auto');
+    ga('send', 'pageview');
+</script>
+</body>
 </html>

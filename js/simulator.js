@@ -25,28 +25,31 @@ function initShaderParameters(prg)
     prg.iResolution = glContext.getUniformLocation(prg, 'iResolution');
 
     // Wave uniforms.
-    prg.waterHeight = glContext.getUniformLocation(prg, 'waterHeight');
+    prg.waterHeight   = glContext.getUniformLocation(prg, 'waterHeight');
     prg.waveSteepness = glContext.getUniformLocation(prg, 'uQ');
-    prg.waveTime    = glContext.getUniformLocation(prg, 'waveTime');
-    prg.amplitude   = glContext.getUniformLocation(prg, 'amplitude');
-    prg.wavelength  = glContext.getUniformLocation(prg, 'wavelength');
-    prg.speeds       = glContext.getUniformLocation(prg, 'speed');
-    prg.directionsX = glContext.getUniformLocation(prg, 'directionsX');
-    prg.directionsY = glContext.getUniformLocation(prg, 'directionsY');
-    prg.iGlobalTime = glContext.getUniformLocation(prg, 'iGlobalTime');
+    prg.waveTime      = glContext.getUniformLocation(prg, 'waveTime');
+    prg.amplitude     = glContext.getUniformLocation(prg, 'amplitude');
+    prg.wavelength    = glContext.getUniformLocation(prg, 'wavelength');
+    prg.speeds        = glContext.getUniformLocation(prg, 'speed');
+    prg.directionsX   = glContext.getUniformLocation(prg, 'directionsX');
+    prg.directionsY   = glContext.getUniformLocation(prg, 'directionsY');
+    prg.iGlobalTime   = glContext.getUniformLocation(prg, 'iGlobalTime');
 
     //prg.pressureGrid = glContext.getUniformLocation(prg,'uPressionGrid');
     // No good.
     //setShaderConstants('waterProgram');
 
-    // Light Uniforms.
-    prg.lightPositionUniform    = glContext.getUniformLocation(prg, 'uLightPosition');
+    // Light uniforms.
+    prg.lightPositionUniform = glContext.getUniformLocation(prg, 'uLightPosition');
     //prg.drawNormalUniform       = glContext.getUniformLocation(prg, 'uDrawNormal');
     //prg.shininessUniform        = glContext.getUniformLocation(prg, 'uShininess');
     //prg.waveUniform             = glContext.getUniformLocation(prg, 'uWave');
     //prg.lightAmbientUniform     = glContext.getUniformLocation(prg, 'uLightAmbient');
     //prg.materialDiffuseUniform  = glContext.getUniformLocation(prg, 'uMaterialDiffuse');
     //prg.materialSpecularUniform = glContext.getUniformLocation(prg, 'uMaterialSpecular');
+
+    // Camera uniform.
+    prg.cameraPositionUniform = glContext.getUniformLocation(prg, 'uCameraPositon');
 
 }
 
@@ -158,6 +161,8 @@ function drawScene()
         rotateModelViewMatrixUsingQuaternion();
     }
 
+    updateCameraLocation();
+
     // Set up our uniforms.
     setupUniforms();
 
@@ -186,28 +191,36 @@ function setupUniforms()
     glContext.uniform1fv(prg.directionsX, DirectionsX);
     glContext.uniform1fv(prg.directionsY, DirectionsY);
     glContext.uniform1f(prg.iGlobalTime, time);
-    glContext.uniform3f(prg.iResolution, canvasResolution[0],canvasResolution[1],canvasResolution[2]);
+    glContext.uniform3f(prg.iResolution, canvasResolution[0], canvasResolution[1], canvasResolution[2]);
 }
 
 function initWebGL()
 {
     var originalGlContext = getGLContext('webgl-canvas');
     //glContext             = originalGlContext;//WebGLDebugUtils.makeDebugContext(originalGlContext);
-    glContext             = WebGLDebugUtils.makeDebugContext(originalGlContext);
+    glContext = WebGLDebugUtils.makeDebugContext(originalGlContext);
 
     initProgram();
     initializeLights();
     initializeObjects();
-
+    initializeCamera();
     console.table(getProgramInfo(glContext, prg).uniforms);
 
     renderLoop();
 }
 
+function initializeCamera()
+{
+    glContext.uniform3f(prg.cameraPositionUniform, cameraPosition[0], cameraPosition[1], cameraPosition[2]);
+}
+
 function initializeLights()
 {
     // Specifiy the light position.
-    glContext.uniform3f(prg.lightPositionUniform, 0.0, 0.0, -1000);
+    glContext.uniform3f(prg.lightPositionUniform, lightPos[0], lightPos[1], lightPos[2]);
+
+    // Check out for mor information on how to do everything.
+    //ch08-02_GouraudOrPhongShadings.html
 
     // More not needed for now.
     //glContext.uniform3f(prg.lightAmbientUniform, 0.1, 0.1, 0.1);
@@ -217,6 +230,31 @@ function initializeLights()
     //glContext.uniform1f(prg.shininessUniform, 10000.0);
     //
     //glContext.uniform1f(prg.waveUniform, 0.5);
+}
+
+// See https://www.opengl.org/discussion_boards/showthread.php/178484-Extracting-camera-position-from-a-ModelView-Matrix
+// http://webglfundamentals.org/webgl/lessons/webgl-3d-camera.html
+// https://www.opengl.org/archives/resources/faq/technical/viewing.htm
+// mat4 viewModel = inverse(uMVMatrix);
+// vec3 cameraPosition = vec3(viewModel[3]); // Might have to divide by w if you can't assume w == 1
+//http://www.3dgep.com/understanding-the-view-matrix/
+function updateCameraLocation()
+{
+    //var invertedModelViewMatrix = mat4.create();
+    //mat4.transpose(invertedModelViewMatrix, mvMatrix);
+    //
+    //console.log(invertedModelViewMatrix);
+    //vec3.set(cameraPosition,mvMatrix[3],mvMatrix[7],mvMatrix[11]);
+    vec3.set(cameraPosition, mvMatrix[12], mvMatrix[13], mvMatrix[14]);
+    //console.log(cameraPosition);
+
+    // Nope
+    //mat3 rotMat(a_modelView);
+    //vec3 d(a_modelView[3]);
+    //
+    //vec3 retVec = -d * rotMat;
+    //return retVec;
+
 }
 
 function setVectorZ(z)
@@ -235,9 +273,6 @@ function changePressure(x, y)
 {
     var tracer       = new Raytracer();
     var ray          = tracer.getRayForPixel(x, y);
-    console.log(ray);
-    console.log(tracer.eye);
     var pointOnPlane = vec3.create();//tracer.eye.add(ray.multiply(-tracer.eye.y / ray.y));
     vec3.add(pointOnPlane, tracer.eye, vec3.scale(vec3.create(), ray, -tracer.eye[1] / ray[1]))
-    console.log("Point on Plane:" + vec3.toString(pointOnPlane));
 }
