@@ -93,13 +93,17 @@ function checkKey(ev) {
     }
 }
 
+/**
+ * Set the wave parameters.
+ * @param index The wave to set
+ */
 function setWave(index)
 {
-    var amplitude = document.getElementById("amplitude"+index).getAttribute("value");
-    var wavelength = document.getElementById("wavelength"+index).getAttribute("value");
-    var directionX = document.getElementById("directionX"+index).getAttribute("value");
-    var directionY = document.getElementById("directionY"+index).getAttribute("value");
-    var speed = document.getElementById("speed"+index).getAttribute("value");
+    var amplitude = document.getElementById("amplitude"+index).value;
+    var wavelength = document.getElementById("wavelength"+index).value;
+    var directionX = document.getElementById("directionX"+index).value;
+    var directionY = document.getElementById("directionY"+index).value;
+    var speed = document.getElementById("speed"+index).value;
 
     Amplitudes[index] = amplitude;
     WaveLengths[index] = wavelength;
