@@ -480,11 +480,13 @@
                 // Distance vector to ocean surface for this pixel's ray.
                 vec3 dist = p - viewOrigin;
 
-                // Calculate the normal on the ocean surface where we intersected (p), using
-                // different "resolution" (in a sense) based on how far away the ray traveled.  Normals close to
-                // the camera should be calculated with high resolution, and normals far from the camera should be calculated with low resolution
-                // The reason to do this is that specular effects (or non linear normal based lighting effects) become fairly random at
-                // far distances and low resolutions and can cause unpleasant shimmering during motion.
+                // Calculate the normal on the ocean surface where we intersected (p),
+                // using different "resolutions" (in a sense) based on how far away the ray traveled.
+                // Normals close to the camera should be calculated with high resolution
+                // and normals far from the camera should be calculated with low resolution.
+                // The reason to do this is that specular effects (or non linear normal based lighting effects)
+                // become fairly random at far distances and low resolutions
+                // and can cause unpleasant shimmering during motion.
                 vec3 n = getNormal(p, dot(dist,dist) * EPSILON_NRM);
 
                 // Direction of the far away directional light.
