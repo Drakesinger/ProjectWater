@@ -248,8 +248,6 @@ function updateLightLocation()
     vec3.transformMat4(lightPos,lightPos,mvMatrix);
 }
 
-}
-
 function setVectorZ(z)
 {
     if (vZ - z > 0)
