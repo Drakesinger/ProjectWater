@@ -61,11 +61,6 @@
             varying vec3 vLightRay;
             varying vec3 vEyeVec;
 
-            /*
-            varying vec3 worldNormal;
-            varying vec3 eyeNormal;
-            */
-
             varying vec4 vColor;
             varying vec2 vTextureCoord;
 
@@ -368,6 +363,7 @@
                 float freq = SEA_FREQ;
                 float amp = SEA_HEIGHT;
                 float choppy = SEA_CHOPPY;
+                // Plane.
                 vec2 uv = p.xz;
                 uv.x *= 0.75;
 
@@ -494,17 +490,18 @@
                 * Renormalize the ray direction, and then rotate it based on the previously calculated
                 * animation angle "ang".  "fromEuler" just calculates a rotation matrix from a vector of angles.
                 */
-                //dir = normalize(dir);// * fromEuler(viewAngle);
+                // New transformation matrix from modelview as it is the rotation matrix.
+                //dir = (uMVMatrix * vec4(normalize(dir),1.0)).xyz;//fromEuler(viewAngle);
 
                 // Ray tracing.
                 // Location of intersection with the light.
                 vec3 p = vEyeVec;
+
                 //vec3 p;
                 //heightMapTracing(viewOrigin,dir,p);
 
                 // Distance vector to ocean surface for this pixel's ray.
                 vec3 dist = p - viewOrigin;
-
 
                 // Calculate the normal on the ocean surface where we intersected (p),
                 // using different "resolutions" (in a sense) based on how far away the ray traveled.
