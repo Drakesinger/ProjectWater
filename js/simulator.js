@@ -162,6 +162,7 @@ function drawScene()
     }
 
     updateCameraLocation();
+    updateLightLocation();
 
     // Set up our uniforms.
     setupUniforms();
@@ -232,28 +233,20 @@ function initializeLights()
     //glContext.uniform1f(prg.waveUniform, 0.5);
 }
 
-// See https://www.opengl.org/discussion_boards/showthread.php/178484-Extracting-camera-position-from-a-ModelView-Matrix
+// See
+// https://www.opengl.org/discussion_boards/showthread.php/178484-Extracting-camera-position-from-a-ModelView-Matrix
 // http://webglfundamentals.org/webgl/lessons/webgl-3d-camera.html
 // https://www.opengl.org/archives/resources/faq/technical/viewing.htm
-// mat4 viewModel = inverse(uMVMatrix);
-// vec3 cameraPosition = vec3(viewModel[3]); // Might have to divide by w if you can't assume w == 1
-//http://www.3dgep.com/understanding-the-view-matrix/
+// http://www.3dgep.com/understanding-the-view-matrix/
 function updateCameraLocation()
 {
-    //var invertedModelViewMatrix = mat4.create();
-    //mat4.transpose(invertedModelViewMatrix, mvMatrix);
-    //
-    //console.log(invertedModelViewMatrix);
-    //vec3.set(cameraPosition,mvMatrix[3],mvMatrix[7],mvMatrix[11]);
     vec3.set(cameraPosition, mvMatrix[12], mvMatrix[13], mvMatrix[14]);
-    //console.log(cameraPosition);
+}
 
-    // Nope
-    //mat3 rotMat(a_modelView);
-    //vec3 d(a_modelView[3]);
-    //
-    //vec3 retVec = -d * rotMat;
-    //return retVec;
+function updateLightLocation()
+{
+    vec3.transformMat4(lightPos,lightPos,mvMatrix);
+}
 
 }
 
