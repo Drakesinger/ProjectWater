@@ -190,9 +190,9 @@ function fromOneToFourTriangles(v1, v2, v3, depth)
             v23.push((v2[i] + v3[i]) / 2.0);
             v31.push((v3[i] + v1[i]) / 2.0);
         }
-        v12 = Normalize(v12);
-        v23 = Normalize(v23);
-        v31 = Normalize(v31);
+        v12 = normalize(v12);
+        v23 = normalize(v23);
+        v31 = normalize(v31);
         fromOneToFourTriangles(v1, v12, v31, depth - 1);
         fromOneToFourTriangles(v2, v23, v12, depth - 1);
         fromOneToFourTriangles(v3, v31, v23, depth - 1);

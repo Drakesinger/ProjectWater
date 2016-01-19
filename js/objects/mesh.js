@@ -14,12 +14,14 @@ function Mesh(options)
     this.colors     = [];
     this.meshBounds = [];
     this.textCoords = [];
+    this.normals    = [];
 
     // Buffers.
     this.vertexBuffer     = null;
     this.indexBuffer      = null;
     this.colorBuffer      = null;
     this.textCoordsBuffer = null;
+    this.normalsBuffer = null;
 }
 
 Mesh.prototype = {
@@ -70,14 +72,22 @@ Mesh.prototype = {
     {
         this.indices.push(index0, index1, index2);
         //this.indices.push(index0, index1, index2, index0);
+        //normalForTriangleVertices([vA,vB,vC],[vB,vC,vD],);
     },
 
     buildQuadMesh: function (x, y, offset, distance)
     {
-        this.vertices.push(x, y, 0.0); 							// A 0
-        this.vertices.push(x + distance, y, 0.0); 				// B 1
-        this.vertices.push(x + distance, y + distance, 0.0); 	// C 2
-        this.vertices.push(x, y + distance, 0.0); 				// D 3
+        // Compute the vertices location.
+        var vA = [x, y, 0.0];
+        var vB = [x + distance, y, 0.0];
+        var vC = [x + distance, y + distance, 0.0];
+        var vD = [x, y + distance, 0.0];
+
+        // Push the vertices.
+        this.vertices.push(vA[0], vA[1], vA[2]);// A 0
+        this.vertices.push(vB[0], vB[1], vB[2]);// B 1
+        this.vertices.push(vC[0], vC[1], vC[2]);// C 2
+        this.vertices.push(vD[0], vD[1], vD[2]);// D 3
 
         // Now the colors. Same as before. no change.
         this.colors.push(waterColor[0], waterColor[1], waterColor[2], waterColor[3]);
