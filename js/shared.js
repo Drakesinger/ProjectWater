@@ -9,13 +9,14 @@ var time      = new Date().getTime() / 1000;
 var canvasResolution = [800.0,800.0,1.0];
 
 // Lightpoint position.
-var lightPos = vec4.fromValues(0.0,3.5,-1005.0,1.0);
+var lightPos = vec4.fromValues(0.0,3.5,1005.0,1.0);
 
 // Camera position.
 var cameraPosition = vec3.fromValues(0.0,0.0,0.0);
 
 // Wave Data
 var meshSize = [100, 100];
+//var meshSize = [1, 1];
 var gridSize = [1, 1];
 //var quadSize = [0.5, 0.5]; // it is actually half of this, since we center it.
 var quadSize = [1.0, 1.0]; // it is actually half of this, since we center it.
@@ -29,7 +30,7 @@ var waveTime      = 0.5;
 var waterHeight   = 0.15;
 var waveWidth     = 0.7;
 var waveFrequency = 0.05;
-//var phaseConstant = 1.5;
+var phaseConstant = 1.5;
 
 // sea
 var ITER_GEOMETRY   = 1;
@@ -38,8 +39,6 @@ var SEA_HEIGHT      = 0.4;
 var SEA_CHOPPY      = 6.3;
 var SEA_SPEED       = 1.8;
 var SEA_FREQ        = 0.16;
-var SEA_BASE        = vec3.fromValues(0.1, 0.19, 0.22);
-var SEA_WATER_COLOR = vec3.fromValues(0.8, 0.9, 0.6);
 var SEA_TIME        = time * SEA_SPEED;
 var octave_m        = mat2.create();
 octave_m[0] = 1.6;
@@ -77,8 +76,10 @@ var indexCnt        = 0;
 var water = new Mesh();
 
 // Use texture?
+var textureSize = 256;
 var addTexture = true;
 var textureFileName = "img/water_texture.jpg";
+var useTexture = 1;
 
 // Camera and Projection Matrices
 var mvMatrix = mat4.create();

@@ -22,7 +22,8 @@ function initShaderParameters(prg)
     // Texture uniform.
     if (addTexture)
     {
-        prg.colorTextureUniform = glContext.getUniformLocation(prg, "uColorTexture");
+        prg.colorTextureUniform  = glContext.getUniformLocation(prg, "uColorTexture");
+        prg.colorTextureUniform1 = glContext.getUniformLocation(prg, "uColorTexture1");
     }
 
     // Canvas resolution uniform.
@@ -57,6 +58,8 @@ function initShaderParameters(prg)
 
     // Pixel click uniform.
     prg.clickedPixelPositionUniform = glContext.getUniformLocation(prg, 'uClickPosition');
+
+    prg.uUseTexture = glContext.getUniformLocation(prg, 'uUseTexture');
 
 }
 
@@ -185,6 +188,7 @@ function drawScene()
 function setupUniforms()
 {
     glContext.uniform1f(prg.waveTime, waveTime);
+    glContext.uniform1f(prg.uUseTexture, useTexture);
 
     glContext.uniformMatrix4fv(prg.pMatrixUniform, false, pMatrix);
     glContext.uniformMatrix4fv(prg.mvMatrixUniform, false, mvMatrix);
@@ -193,6 +197,7 @@ function setupUniforms()
     if (addTexture)
     {
         glContext.uniform1i(prg.colorTextureUniform, 0);
+        glContext.uniform1i(prg.colorTextureUniform1, 1);
     }
 
     glContext.uniform1f(prg.waterHeight, waterHeight);
@@ -235,7 +240,7 @@ function updateLightLocation()
 
 function updateNormals()
 {
-    mat4.copy(mvMatrix, nMatrix);
+    mat4.copy(nMatrix, mvMatrix);
     mat4.invert(nMatrix, nMatrix);
     mat4.transpose(nMatrix, nMatrix);
 }
@@ -259,21 +264,57 @@ function setVectorZ(z)
 
 function changePressure(x, y)
 {
-    var tracer       = new Raytracer();
-    var ray          = tracer.getRayForPixel(x, y);
-    var pointOnPlane = vec3.create();//tracer.eye.add(ray.multiply(-tracer.eye.y / ray.y));
-    vec3.add(pointOnPlane, tracer.eye, vec3.scale(vec3.create(), ray, -tracer.eye[1] / ray[1]));
+    //var tracer       = new Raytracer();
+    //var ray          = tracer.getRayForPixel(x, y);
+    //var pointOnPlane = vec3.create();//tracer.eye.add(ray.multiply(-tracer.eye.y / ray.y));
+    //vec3.add(pointOnPlane, tracer.eye, vec3.scale(vec3.create(), ray, -tracer.eye[1] / ray[1]));
+    //
+    //console.log(pointOnPlane);
 
-    console.log(pointOnPlane);
+    //clickedPixel[0] = x;
+    //clickedPixel[1] = y;
 
-    clickedPixel[0] = x;
-    clickedPixel[1] = y;
+    var randCanvas    = document.createElement("canvas");
+    randCanvas.width  = textureSize;
+    randCanvas.height = textureSize;
+
+    var cx = x - randCanvas.offsetLeft;
+    var cy = y - randCanvas.offsetTop;
+
+    var ctx = randCanvas.getContext("2d");
+    var pixels = ctx.createImageData(textureSize,textureSize);
+
+    for (var x = 0; x < textureSize*textureSize; x++)
+    {
+        pixels.data[x] = 100;
+    }
+
+    pixels.data[cx] = 255;
+    pixels.data[cy] = 255;
+
+    ctx.putImageData(pixels,0,0);
+
+    // NOPE.
+    var index = 1;
+    water.texColorTab[index] = glContext.createTexture();
+    generateTextureWith2Darray(randCanvas, water.texColorTab[index]);
+
+}
+
+function generateTextureWith2Darray(data, newTexture)
+{
+    // Activate the texture.
+    //glContext.activeTexture(glContext.TEXTURE1);
+    glContext.bindTexture(glContext.TEXTURE_2D, newTexture);
+    glContext.texImage2D(glContext.TEXTURE_2D, 0, glContext.RGBA, glContext.RGBA, glContext.UNSIGNED_BYTE, data);
+    glContext.texParameteri(glContext.TEXTURE_2D, glContext.TEXTURE_MIN_FILTER, glContext.LINEAR);
+    glContext.texParameteri(glContext.TEXTURE_2D, glContext.TEXTURE_MAG_FILTER, glContext.LINEAR);
 }
 
 function initWebGL()
 {
     var originalGlContext = getGLContext('webgl-canvas');
-    if(!useDebugger)
+    if (!useDebugger)
     {
         glContext = originalGlContext;
     }
