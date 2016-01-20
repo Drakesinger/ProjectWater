@@ -283,6 +283,58 @@ vec2.divide = function(out, a, b) {
  */
 vec2.div = vec2.divide;
 
+
+/**
+* Operations with floats. Component wise operations on the vectors.
+*/
+
+/**
+*
+* @param {vec2} a
+* @param {number} b
+*/
+vec2.addf = function(a,b)
+{
+a[0] += b;
+a[1] += b;
+    return a;
+};
+      /**
+       *
+       * @param {vec2} a
+       * @param {number} b
+       */
+vec2.subf = function(a,b)
+{
+  a[0] -= b;
+  a[1] -= b;
+    return a;
+};
+      /**
+       *
+       * @param {vec2} a
+       * @param {number} b
+       */
+vec2.mulf = function(a,b)
+{
+a[0] *= b;
+a[1] *= b;
+    return a;
+};
+      /**
+       *
+       * @param {vec2} a
+       * @param {number} b
+       */
+vec2.divf = function(a,b)
+{
+a[0] /= b;
+a[1] /= b;
+    return a;
+};
+
+
+
 /**
  * Returns the minimum of two vec2's
  *
@@ -831,6 +883,61 @@ vec3.divide = function(out, a, b) {
  * @function
  */
 vec3.div = vec3.divide;
+
+
+/**
+* Operations with floats. Component wise operations on the vectors.
+*/
+
+/**
+*
+* @param {vec3} a
+* @param {number} b
+*/
+vec3.addf = function(a,b)
+{
+  a[0] += b;
+  a[1] += b;
+  a[2] += b;
+    return a;
+};
+/**
+*
+* @param {vec3} a
+* @param {number} b
+*/
+vec3.subf = function(a,b)
+{
+  a[0] -= b;
+  a[1] -= b;
+  a[2] -= b;
+    return a;
+};
+/**
+*
+* @param {vec3} a
+* @param {number} b
+*/
+vec3.mulf = function(a,b)
+{
+  a[0] *= b;
+  a[1] *= b;
+  a[2] *= b;
+
+    return a;
+};
+/**
+*
+* @param {vec3} a
+* @param {number} b
+*/
+vec3.divf = function(a,b)
+{
+  a[0] /= b;
+  a[1] /= b;
+  a[2] /= b;
+    return a;
+};
 
 /**
  * Returns the minimum of two vec3's

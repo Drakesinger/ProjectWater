@@ -72,7 +72,10 @@ Mesh.prototype = {
     {
         this.indices.push(index0, index1, index2);
         //this.indices.push(index0, index1, index2, index0);
-        //normalForTriangleVertices([vA,vB,vC],[vB,vC,vD],);
+        var triangleNormal = normalForTriangleVertices(
+            [this.vertices[index0], this.vertices[index0 + 1], this.vertices[index0 + 2]],
+            [this.vertices[index1], this.vertices[index1 + 1], this.vertices[index1 + 2]],
+            [this.vertices[index2], this.vertices[index2 + 1], this.vertices[index2 + 2]]);
     },
 
     buildQuadMesh: function (x, y, offset, distance)
@@ -88,6 +91,15 @@ Mesh.prototype = {
         this.vertices.push(vB[0], vB[1], vB[2]);// B 1
         this.vertices.push(vC[0], vC[1], vC[2]);// C 2
         this.vertices.push(vD[0], vD[1], vD[2]);// D 3
+
+        // Since we have a plane, the normals are just [0.0,1.0,0.0];
+        var planeNormal = [0.0,1.0,0.0];
+
+        // Push the normals. For each vertex.
+        this.normals.push(planeNormal[0],planeNormal[1],planeNormal[2]);
+        this.normals.push(planeNormal[0],planeNormal[1],planeNormal[2]);
+        this.normals.push(planeNormal[0],planeNormal[1],planeNormal[2]);
+        this.normals.push(planeNormal[0],planeNormal[1],planeNormal[2]);
 
         // Now the colors. Same as before. no change.
         this.colors.push(waterColor[0], waterColor[1], waterColor[2], waterColor[3]);
@@ -114,6 +126,7 @@ Mesh.prototype = {
         this.vertexBuffer = getVertexBufferWithVertices(this.vertices);
         this.indexBuffer  = getIndexBufferWithIndices(this.indices);
         this.colorBuffer  = getVertexBufferWithVertices(this.colors);
+        this.normalsBuffer = getVertexBufferWithVertices(this.normals);
         if (addTexture)
         {
             this.textCoordsBuffer = getArrayBufferWithArray(this.textCoords);

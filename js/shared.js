@@ -63,6 +63,8 @@ var addTexture = false;
 // Camera and Projection Matrices
 var mvMatrix = mat4.create();
 var pMatrix  = mat4.create();
+// Normals matrix.
+var nMatrix = mat4.create();
 
 // Perspective.
 var usePerspective = true;

@@ -4,6 +4,9 @@ function initShaderParameters(prg)
     glContext.enableVertexAttribArray(prg.vertexPositionAttribute);
     prg.colorAttribute          = glContext.getAttribLocation(prg, "aColor");
     glContext.enableVertexAttribArray(prg.colorAttribute);
+    // Add the normal attribute.
+    prg.vertexNormalAttribute = glContext.getAttribLocation(prg, "aVertexNormal");
+    glContext.enableVertexAttribArray(prg.vertexNormalAttribute);
 
     // Add the texture coordinate attribute
     if (addTexture)
@@ -14,6 +17,7 @@ function initShaderParameters(prg)
     // Matrix uniforms.
     prg.pMatrixUniform  = glContext.getUniformLocation(prg, 'uPMatrix');
     prg.mvMatrixUniform = glContext.getUniformLocation(prg, 'uMVMatrix');
+    prg.nMatrixUniform  = glContext.getUniformLocation(prg, 'uNMatrix');
 
     // Texture uniform.
     if (addTexture)
@@ -51,6 +55,9 @@ function initShaderParameters(prg)
     // Camera uniform.
     prg.cameraPositionUniform = glContext.getUniformLocation(prg, 'uCameraPositon');
 
+    // Pixel click uniform.
+    prg.clickedPixelPositionUniform = glContext.getUniformLocation(prg, 'uClickPosition');
+
 }
 
 function SetShaderConstants(programName)
@@ -69,7 +76,8 @@ function SetShaderConstants(programName)
 
 function initializeObjects()
 {
-    water.create(meshSize[0], meshSize[1], vec2.create(), quadSize[0], quadSize[1])
+    water.create(meshSize[0], meshSize[1], vec2.create(), quadSize[0], quadSize[1]);
+    water.addTexture({fileName: textureFileName});
 }
 
 
@@ -163,9 +171,11 @@ function drawScene()
 
     updateCameraLocation();
     updateLightLocation();
+    updateNormals();
 
     // Set up our uniforms.
     setupUniforms();
+    updateClickPosition();
 
     // Draw the water mesh.
     water.draw(drawPrimitive);
@@ -174,10 +184,11 @@ function drawScene()
 
 function setupUniforms()
 {
-    glContext.uniform1f(prg.waveTime, waveTime)
+    glContext.uniform1f(prg.waveTime, waveTime);
 
     glContext.uniformMatrix4fv(prg.pMatrixUniform, false, pMatrix);
     glContext.uniformMatrix4fv(prg.mvMatrixUniform, false, mvMatrix);
+    glContext.uniformMatrix4fv(prg.nMatrixUniform, false, nMatrix);
 
     if (addTexture)
     {
@@ -195,20 +206,6 @@ function setupUniforms()
     glContext.uniform3f(prg.iResolution, canvasResolution[0], canvasResolution[1], canvasResolution[2]);
 }
 
-function initWebGL()
-{
-    var originalGlContext = getGLContext('webgl-canvas');
-    //glContext             = originalGlContext;//WebGLDebugUtils.makeDebugContext(originalGlContext);
-    glContext = WebGLDebugUtils.makeDebugContext(originalGlContext);
-
-    initProgram();
-    initializeLights();
-    initializeObjects();
-    initializeCamera();
-    console.table(getProgramInfo(glContext, prg).uniforms);
-
-    renderLoop();
-}
 
 function initializeCamera()
 {
@@ -219,18 +216,6 @@ function initializeLights()
 {
     // Specifiy the light position.
     glContext.uniform3f(prg.lightPositionUniform, lightPos[0], lightPos[1], lightPos[2]);
-
-    // Check out for mor information on how to do everything.
-    //ch08-02_GouraudOrPhongShadings.html
-
-    // More not needed for now.
-    //glContext.uniform3f(prg.lightAmbientUniform, 0.1, 0.1, 0.1);
-    //glContext.uniform3f(prg.materialSpecularUniform, 0.5, 0.5, 0.5);
-    //glContext.uniform3f(prg.materialDiffuseUniform, 0.6, 0.6, 0.6);
-    //
-    //glContext.uniform1f(prg.shininessUniform, 10000.0);
-    //
-    //glContext.uniform1f(prg.waveUniform, 0.5);
 }
 
 // See
@@ -245,7 +230,19 @@ function updateCameraLocation()
 
 function updateLightLocation()
 {
-    vec3.transformMat4(lightPos,lightPos,mvMatrix);
+    vec3.transformMat4(lightPos, lightPos, mvMatrix);
+}
+
+function updateNormals()
+{
+    mat4.copy(mvMatrix, nMatrix);
+    mat4.invert(nMatrix, nMatrix);
+    mat4.transpose(nMatrix, nMatrix);
+}
+
+function updateClickPosition()
+{
+    glContext.uniform2f(prg.clickedPixelPositionUniform, clickedPixel[0], clickedPixel[1]);
 }
 
 function setVectorZ(z)
@@ -265,5 +262,30 @@ function changePressure(x, y)
     var tracer       = new Raytracer();
     var ray          = tracer.getRayForPixel(x, y);
     var pointOnPlane = vec3.create();//tracer.eye.add(ray.multiply(-tracer.eye.y / ray.y));
-    vec3.add(pointOnPlane, tracer.eye, vec3.scale(vec3.create(), ray, -tracer.eye[1] / ray[1]))
+    vec3.add(pointOnPlane, tracer.eye, vec3.scale(vec3.create(), ray, -tracer.eye[1] / ray[1]));
+
+    console.log(pointOnPlane);
+
+    clickedPixel[0] = x;
+    clickedPixel[1] = y;
+}
+
+function initWebGL()
+{
+    var originalGlContext = getGLContext('webgl-canvas');
+    if(!useDebugger)
+    {
+        glContext = originalGlContext;
+    }
+    else
+    {
+        glContext = WebGLDebugUtils.makeDebugContext(originalGlContext);
+    }
+    initProgram();
+    initializeLights();
+    initializeObjects();
+    initializeCamera();
+    console.table(getProgramInfo(glContext, prg).uniforms);
+
+    renderLoop();
 }
