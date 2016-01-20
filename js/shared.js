@@ -17,8 +17,8 @@ var cameraPosition = vec3.fromValues(0.0,0.0,0.0);
 // Wave Data
 var meshSize = [100, 100];
 var gridSize = [1, 1];
-var quadSize = [0.5, 0.5]; // it is actually half of this, since we center it.
-//var quadSize = [1.0, 1.0]; // it is actually half of this, since we center it.
+//var quadSize = [0.5, 0.5]; // it is actually half of this, since we center it.
+var quadSize = [1.0, 1.0]; // it is actually half of this, since we center it.
 
 var pressureGrid = createTwoDimensionalArray(gridSize[0], gridSize[1]);
 var minPressure  = -250;
@@ -30,6 +30,25 @@ var waterHeight   = 0.15;
 var waveWidth     = 0.7;
 var waveFrequency = 0.05;
 //var phaseConstant = 1.5;
+
+// sea
+var ITER_GEOMETRY   = 1;
+var ITER_FRAGMENT   = 5;
+var SEA_HEIGHT      = 0.4;
+var SEA_CHOPPY      = 6.3;
+var SEA_SPEED       = 1.8;
+var SEA_FREQ        = 0.16;
+var SEA_BASE        = vec3.fromValues(0.1, 0.19, 0.22);
+var SEA_WATER_COLOR = vec3.fromValues(0.8, 0.9, 0.6);
+var SEA_TIME        = time * SEA_SPEED;
+var octave_m        = mat2.create();
+octave_m[0] = 1.6;
+octave_m[1] = 1.2;
+octave_m[2] = -1.2;
+octave_m[3] = 1.6;
+var EPSILON_NRM	= 0.1 / 800.0;
+var NUM_STEPS = 8;
+
 
 // Useful tryout values kept.
 //var Amplitudes  = [0.0, 0.0, 0.0, 0.0];
@@ -58,7 +77,8 @@ var indexCnt        = 0;
 var water = new Mesh();
 
 // Use texture?
-var addTexture = false;
+var addTexture = true;
+var textureFileName = "img/water_texture.jpg";
 
 // Camera and Projection Matrices
 var mvMatrix = mat4.create();
@@ -68,6 +88,7 @@ var nMatrix = mat4.create();
 
 // Perspective.
 var usePerspective = true;
+//var usePerspective = false;
 
 // Translation vectors.
 var vX = 0.0;
@@ -80,6 +101,12 @@ var rotY = 0.0;
 var rotX = -70.0;
 //var rotX = 0.0;
 
+// Pixel click position.
+var clickedPixel = [-1000.0,-1000.0];
+
 // Drawing type.
 var drawPrimitive = {};
 var wireframe = false;
+
+// Debugging.
+var useDebugger = false;
